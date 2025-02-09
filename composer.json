@@ -1,0 +1,52 @@
+{
+    "name": "phpcsv/csv-helper",
+    "version": "0.0.1",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "achraf aamri",
+            "email": "achraf.aamri@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3.0"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.24",
+        "laravel/pint": "^1.18.1",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.5",
+        "rector/rector": "^2.0",
+        "symfony/var-dumper": "^7.1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Phpcsv\\CsvHelper\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist"
+    },
+    "scripts": {
+        "refacto": "rector",
+        "lint": "pint",
+        "test:refacto": "rector --dry-run",
+        "test:lint": "pint",
+        "test:types": "phpstan analyse --ansi",
+        "test:unit": "phpunit --colors=always --exclude-group slow",
+        "test": [
+            "@test:refacto",
+            "@test:lint",
+            "@test:types",
+            "@test:unit"
+        ]
+    }
+}
