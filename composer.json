@@ -13,7 +13,7 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
-        "laravel/pint": "^1.18.1",
+        "laravel/pint": "^v1.20.0",
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^11.5",
         "rector/rector": "^2.0",
@@ -39,7 +39,7 @@
         "refacto": "rector",
         "lint": "pint",
         "test:refacto": "rector --dry-run",
-        "test:lint": "pint",
+        "test:lint": "pint --test",
         "test:types": "phpstan analyse --ansi",
         "test:unit": "phpunit --colors=always --exclude-group slow",
         "test": [
