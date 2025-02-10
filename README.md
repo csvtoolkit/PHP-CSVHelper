@@ -9,8 +9,9 @@ This library is still in development and should not be used in production enviro
 ## Installation
 
 To install the CsvHelper library, you can use Composer:
-
-
+```
+composer require phpcsv/csv-helper
+```
 ## Contributing
 
 We welcome contributions to the CsvHelper library! Please follow these guidelines:
