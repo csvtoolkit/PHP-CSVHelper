@@ -42,6 +42,4 @@ interface CsvReaderInterface
     public function getRecord(): array|string|false;
 
     public function getHeader(): string|false|array;
-
-    public function close(): void;
 }

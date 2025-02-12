@@ -57,9 +57,4 @@ class AbstractCsvReader implements CsvReaderInterface
     {
         return false;
     }
-
-    public function close(): void
-    {
-        $this->reader = null;
-    }
 }

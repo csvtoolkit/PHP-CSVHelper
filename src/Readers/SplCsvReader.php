@@ -114,16 +114,6 @@ class SplCsvReader extends AbstractCsvReader
     }
 
     /**
-     * Gets the current position in the file
-     *
-     * @return int The current record position (0-based)
-     */
-    public function getCurrentPosition(): int
-    {
-        return $this->position;
-    }
-
-    /**
      * Retrieves the header row if configured
      *
      * @return array|false Returns the header row as an array if headers are enabled,
