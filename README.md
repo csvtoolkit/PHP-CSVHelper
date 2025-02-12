@@ -24,8 +24,8 @@ We welcome contributions to the CsvHelper library! Please follow these guideline
 ## Roadmap
 
 ### Future Features
-- **In Progress**: Writer implementation
-- **Planned**: 
+- **In Progress**: Native CSV PHP Extension 
+- **Planned**:
   - Mapper
   - Validators
   - QCSV support
