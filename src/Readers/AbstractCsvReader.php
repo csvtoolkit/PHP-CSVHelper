@@ -7,7 +7,7 @@ use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 use Phpcsv\CsvHelper\Contracts\CsvReaderInterface;
 use SplFileObject;
 
-class AbstractCsvReader implements CsvReaderInterface
+abstract class AbstractCsvReader implements CsvReaderInterface
 {
     protected CsvConfigInterface $config;
 
@@ -18,6 +18,17 @@ class AbstractCsvReader implements CsvReaderInterface
     protected ?SplFileObject $reader = null;
 
     protected ?int $recordCount = null;
+
+    public function __construct(
+        ?string $source = null,
+        ?CsvConfigInterface $config = null
+    ) {
+        $this->config = $config ?? new CsvConfig;
+
+        if ($source !== null) {
+            $this->setSource($source);
+        }
+    }
 
     public function getReader(): ?SplFileObject
     {
@@ -48,13 +59,33 @@ class AbstractCsvReader implements CsvReaderInterface
         return $this->position;
     }
 
-    public function getRecord(): false|array
+    public function getRecord(): array|false
     {
         return false;
     }
 
-    public function getHeader(): false|array
+    public function getHeader(): array|false
     {
         return false;
+    }
+
+    public function hasRecords(): bool
+    {
+        return false;
+    }
+
+    public function setSource(string $source): void
+    {
+        $this->getConfig()->setPath($source);
+    }
+
+    public function getSource(): string
+    {
+        return $this->config->getPath();
+    }
+
+    public function setConfig(CsvConfigInterface $config): void
+    {
+        $this->config = $config;
     }
 }
