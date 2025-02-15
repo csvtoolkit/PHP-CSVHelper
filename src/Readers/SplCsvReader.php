@@ -2,6 +2,7 @@
 
 namespace Phpcsv\CsvHelper\Readers;
 
+use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 use Phpcsv\CsvHelper\Exceptions\EmptyFileException;
 use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
 use Phpcsv\CsvHelper\Exceptions\FileNotReadableException;
@@ -16,51 +17,56 @@ use SplFileObject;
 class SplCsvReader extends AbstractCsvReader
 {
     /**
-     * Gets or initializes the SplFileObject reader
-     *
-     * @return SplFileObject|null The configured file object
-     *
-     * @throws FileNotFoundException When the file does not exist
-     * @throws FileNotReadableException When the file is not readable
-     * @throws EmptyFileException When the file is empty
+     * @throws FileNotFoundException
+     * @throws FileNotReadableException
+     * @throws EmptyFileException
      */
     public function getReader(): ?SplFileObject
     {
         if (! $this->reader instanceof SplFileObject) {
-            $filePath = $this->getConfig()->getPath();
-
-            if (! file_exists($filePath)) {
-                throw new FileNotFoundException($filePath);
-            }
-
-            if (! is_readable($filePath)) {
-                throw new FileNotReadableException($filePath);
-            }
-
-            $this->reader = new SplFileObject($filePath);
-
-            if ($this->reader->getSize() === 0) {
-                throw new EmptyFileException($filePath);
-            }
-
-            $this->reader->setFlags(SplFileObject::READ_CSV);
-            $this->reader->setCsvControl(
-                $this->getConfig()->getDelimiter(),
-                $this->getConfig()->getEnclosure(),
-                $this->getConfig()->getEscape()
-            );
+            $this->setReader();
         }
 
         return $this->reader;
     }
 
     /**
-     * Gets the total number of records in the CSV file
-     *
-     * Note: This method needs to seek through the entire file to count records,
-     * which may be expensive for large files.
-     *
-     * @return int|null The total number of records, or null if counting failed
+     * @throws FileNotFoundException
+     * @throws FileNotReadableException
+     * @throws EmptyFileException
+     */
+    public function setReader(): void
+    {
+        $filePath = $this->getConfig()->getPath();
+
+        if (! file_exists($filePath)) {
+            throw new FileNotFoundException($filePath);
+        }
+
+        if (! is_readable($filePath)) {
+            throw new FileNotReadableException($filePath);
+        }
+
+        $this->reader = new SplFileObject($filePath);
+
+        if ($this->reader->getSize() === 0) {
+            throw new EmptyFileException($filePath);
+        }
+
+        $this->reader->setFlags(SplFileObject::READ_CSV);
+        $this->reader->setCsvControl(
+            $this->getConfig()->getDelimiter(),
+            $this->getConfig()->getEnclosure(),
+            $this->getConfig()->getEscape()
+        );
+
+        $this->position = 0;
+        $this->recordCount = null;
+        $this->header = null;
+    }
+
+    /**
+     * @return int|null Total number of records, excluding header if configured
      */
     public function getRecordCount(): ?int
     {
@@ -80,9 +86,6 @@ class SplCsvReader extends AbstractCsvReader
         return $this->recordCount;
     }
 
-    /**
-     * Rewinds the reader to the beginning of the file
-     */
     public function rewind(): void
     {
         if (! $this->reader instanceof SplFileObject) {
@@ -93,10 +96,7 @@ class SplCsvReader extends AbstractCsvReader
     }
 
     /**
-     * Reads the current record from the CSV file
-     *
-     * @return array|false Returns an array containing the fields of the current record,
-     *                     or false if end of file is reached or an error occurs
+     * @return array|false Array containing CSV fields or false on EOF/error
      */
     public function getRecord(): array|false
     {
@@ -114,10 +114,7 @@ class SplCsvReader extends AbstractCsvReader
     }
 
     /**
-     * Retrieves the header row if configured
-     *
-     * @return array|false Returns the header row as an array if headers are enabled,
-     *                     false if headers are disabled or an error occurs
+     * @return array|false Header row or false if headers disabled/error
      */
     public function getHeader(): array|false
     {
@@ -145,13 +142,60 @@ class SplCsvReader extends AbstractCsvReader
         return $record;
     }
 
+    /**
+     * @param  int  $position  Zero-based record position
+     * @return array|false Record at position or false on error
+     */
     public function seek(int $position): array|false
     {
         /** @var SplFileObject $reader */
         $reader = $this->getReader();
-        $this->position = $position - 1; // -1 because we increment the position after reading a record
+        $this->position = $position - 1;
         $reader->seek($position);
 
         return $this->getRecord();
+    }
+
+    /**
+     * @return bool True if more records exist
+     */
+    public function hasRecords(): bool
+    {
+        /** @var SplFileObject $reader */
+        $reader = $this->getReader();
+
+        return ! $reader->eof();
+    }
+
+    /**
+     * @param  string  $source  File path
+     */
+    public function setSource(string $source): void
+    {
+        $this->config->setPath($source);
+
+        if ($this->reader instanceof \SplFileObject) {
+            $this->setReader();
+        }
+    }
+
+    public function setConfig(CsvConfigInterface $config): void
+    {
+        $this->config = $config;
+
+        if ($this->reader instanceof \SplFileObject) {
+            $this->setReader();
+        }
+    }
+
+    /**
+     * @see CsvConfigInterface::hasHeader()
+     */
+    public function skipHeader(): void
+    {
+        if ($this->getConfig()->hasHeader()) {
+            $this->rewind();
+            $this->getRecord();
+        }
     }
 }

@@ -4,7 +4,7 @@ namespace Phpcsv\CsvHelper\Configs;
 
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 
-class AbstractCsvConfig implements CsvConfigInterface
+abstract class AbstractCsvConfig implements CsvConfigInterface
 {
     protected string $delimiter = ',';
 
