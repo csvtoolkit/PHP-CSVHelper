@@ -15,6 +15,17 @@ use SplFileObject;
  */
 class SplCsvWriter extends AbstractCsvWriter
 {
+    public function __construct(
+        ?string $target = null,
+        ?CsvConfigInterface $config = null
+    ) {
+        $this->config = $config ?? new CsvConfig;
+
+        if ($target !== null) {
+            $this->setTarget($target);
+        }
+    }
+
     /**
      * @throws InvalidConfigurationException
      */
@@ -71,6 +82,7 @@ class SplCsvWriter extends AbstractCsvWriter
      */
     private function prepareData(array $data): array
     {
+        // @noRector
         $data = array_map($this->convertToString(...), $data);
 
         return array_map(fn (string $value): string => $this->shouldEscape($value) ? $this->escapeValue($value) : $value, $data);
@@ -156,5 +168,15 @@ class SplCsvWriter extends AbstractCsvWriter
         }
 
         return '';
+    }
+
+    public function setTarget(string $target): void
+    {
+        $this->config->setPath($target);
+    }
+
+    public function getTarget(): string
+    {
+        return $this->config->getPath();
     }
 }

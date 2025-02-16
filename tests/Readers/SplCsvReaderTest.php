@@ -243,23 +243,21 @@ class SplCsvReaderTest extends TestCase
      */
     #[Test]
     #[DataProvider('configProvider')]
-    public function read_csv_with_different_configs(CsvConfig $config, string $expected): void
+    public function read_csv_with_different_configs(CsvConfig $config, array $expected): void
     {
-        // Arrange
         $data = [
             ['col1', 'col2'],
             ['value1', 'value2'],
         ];
         $filePath = $this->createConfiguredTestFile($data, $config);
 
-        // Act
         $csvReader = new SplCsvReader;
         $csvReader->setSource($filePath);
         $csvReader->setConfig($config);
 
-        // Assert
-        $this->assertEquals(['col1', 'col2'], $csvReader->getRecord());
-        $this->assertEquals(['value1', 'value2'], $csvReader->getRecord());
+        foreach ($expected as $expectedRecord) {
+            $this->assertEquals($expectedRecord, $csvReader->getRecord());
+        }
     }
 
     /**
@@ -282,19 +280,31 @@ class SplCsvReaderTest extends TestCase
         return [
             'custom delimiter' => [
                 (new CsvConfig)->setDelimiter('@'),
-                '@',
+                [
+                    ['col1', 'col2'],
+                    ['value1', 'value2'],
+                ],
             ],
             'custom enclosure' => [
                 (new CsvConfig)->setEnclosure('\''),
-                '\'',
+                [
+                    ['col1', 'col2'],
+                    ['value1', 'value2'],
+                ],
             ],
             'tab delimiter' => [
                 (new CsvConfig)->setDelimiter("\t"),
-                "\t",
+                [
+                    ['col1', 'col2'],
+                    ['value1', 'value2'],
+                ],
             ],
             'pipe delimiter' => [
                 (new CsvConfig)->setDelimiter('|'),
-                '|',
+                [
+                    ['col1', 'col2'],
+                    ['value1', 'value2'],
+                ],
             ],
         ];
     }
