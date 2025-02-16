@@ -120,7 +120,6 @@ class SplCsvReader extends AbstractCsvReader
 
         if ($record !== false && $record !== []) {
             $this->position++;
-
         }
 
         return is_array($record) ? $record !== [] ? $record : false : false;
