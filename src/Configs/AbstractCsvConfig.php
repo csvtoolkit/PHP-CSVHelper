@@ -18,75 +18,27 @@ abstract class AbstractCsvConfig implements CsvConfigInterface
 
     protected bool $hasHeader = true;
 
-    public function getDelimiter(): string
-    {
-        return $this->delimiter;
-    }
+    abstract public function getDelimiter(): string;
 
-    public function setDelimiter(string $delimiter): CsvConfigInterface
-    {
-        $this->delimiter = $delimiter;
+    abstract public function setDelimiter(string $delimiter): CsvConfigInterface;
 
-        return $this;
-    }
+    abstract public function getEnclosure(): string;
 
-    public function getEnclosure(): string
-    {
-        return $this->enclosure;
-    }
+    abstract public function setEnclosure(string $enclosure): CsvConfigInterface;
 
-    public function setEnclosure(string $enclosure): CsvConfigInterface
-    {
-        $this->enclosure = $enclosure;
+    abstract public function getEscape(): string;
 
-        return $this;
-    }
+    abstract public function setEscape(string $escape): CsvConfigInterface;
 
-    public function getEscape(): string
-    {
-        return $this->escape;
-    }
+    abstract public function getPath(): string;
 
-    public function setEscape(string $escape): CsvConfigInterface
-    {
-        $this->escape = $escape;
+    abstract public function setPath(string $path): CsvConfigInterface;
 
-        return $this;
-    }
+    abstract public function getOffset(): int;
 
-    public function getPath(): string
-    {
-        return $this->path;
-    }
+    abstract public function setOffset(int $offset): CsvConfigInterface;
 
-    public function setPath(string $path): CsvConfigInterface
-    {
-        $this->path = $path;
+    abstract public function hasHeader(): bool;
 
-        return $this;
-    }
-
-    public function getOffset(): int
-    {
-        return $this->offset;
-    }
-
-    public function setOffset(int $offset): CsvConfigInterface
-    {
-        $this->offset = $offset;
-
-        return $this;
-    }
-
-    public function HasHeader(): bool
-    {
-        return $this->hasHeader;
-    }
-
-    public function setHasHeader(bool $hasHeader): CsvConfigInterface
-    {
-        $this->hasHeader = $hasHeader;
-
-        return $this;
-    }
+    abstract public function setHasHeader(bool $hasHeader): CsvConfigInterface;
 }

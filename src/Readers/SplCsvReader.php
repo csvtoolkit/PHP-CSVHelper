@@ -2,6 +2,7 @@
 
 namespace Phpcsv\CsvHelper\Readers;
 
+use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 use Phpcsv\CsvHelper\Exceptions\EmptyFileException;
 use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
@@ -16,6 +17,17 @@ use SplFileObject;
  */
 class SplCsvReader extends AbstractCsvReader
 {
+    public function __construct(
+        ?string $source = null,
+        ?CsvConfigInterface $config = null
+    ) {
+        $this->config = $config ?? new CsvConfig;
+
+        if ($source !== null) {
+            $this->setSource($source);
+        }
+    }
+
     /**
      * @throws FileNotFoundException
      * @throws FileNotReadableException
@@ -197,5 +209,20 @@ class SplCsvReader extends AbstractCsvReader
             $this->rewind();
             $this->getRecord();
         }
+    }
+
+    public function getConfig(): CsvConfigInterface
+    {
+        return $this->config;
+    }
+
+    public function getCurrentPosition(): int
+    {
+        return $this->position;
+    }
+
+    public function getSource(): string
+    {
+        return $this->config->getPath();
     }
 }
