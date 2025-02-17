@@ -118,11 +118,21 @@ class SplCsvReader extends AbstractCsvReader
         $reader->seek($this->getCurrentPosition());
         $record = $reader->current();
 
-        if ($record !== false && $record !== []) {
-            $this->position++;
+        if ($record === false) {
+            return false;
         }
 
-        return is_array($record) ? $record !== [] ? $record : false : false;
+        if (is_string($record)) {
+            return false;
+        }
+
+        if ($this->isInvalidRecord($record)) {
+            return false;
+        }
+
+        $this->position++;
+
+        return $record;
     }
 
     /**
@@ -224,5 +234,13 @@ class SplCsvReader extends AbstractCsvReader
     public function getSource(): string
     {
         return $this->config->getPath();
+    }
+
+    /**
+     * Check if the record is considered invalid
+     */
+    private function isInvalidRecord(array $record): bool
+    {
+        return count($record) === 1 && $record[0] === null;
     }
 }
