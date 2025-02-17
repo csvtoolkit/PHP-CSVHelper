@@ -118,6 +118,8 @@ class SplCsvReader extends AbstractCsvReader
         $reader->seek($this->getCurrentPosition());
         $record = $reader->current();
 
+        $this->position++;
+
         if ($record === false) {
             return false;
         }
@@ -129,8 +131,6 @@ class SplCsvReader extends AbstractCsvReader
         if ($this->isInvalidRecord($record)) {
             return false;
         }
-
-        $this->position++;
 
         return $record;
     }
