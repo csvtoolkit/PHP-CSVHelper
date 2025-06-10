@@ -16,7 +16,7 @@ grumphp:
         fix_by_default: false
     environment:
         files: []
-        variables: 
+        variables:
             PHP_CS_FIXER_IGNORE_ENV: true
         paths: []
     tasks:
@@ -65,4 +65,4 @@ grumphp:
     extensions: []
     ascii:
         failed: ~
-        succeeded: ~ 
+        succeeded: ~
