@@ -2,3 +2,4 @@ vendor/
 .idea/
 .phpunit.cache/
 *.csv
+.php-cs-fixer.cache

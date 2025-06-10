@@ -7,4 +7,6 @@ use RuntimeException;
 /**
  * Base exception for CSV reader errors
  */
-class CsvReaderException extends RuntimeException {}
+class CsvReaderException extends RuntimeException
+{
+}
