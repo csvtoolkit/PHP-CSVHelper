@@ -36,14 +36,14 @@ class SplCsvReaderTest extends TestCase
     {
         parent::setUp();
         $this->setupTestDirectory();
-        $this->defaultConfig = new CsvConfig;
+        $this->defaultConfig = new CsvConfig();
         $this->createSampleData();
     }
 
     private function setupTestDirectory(): void
     {
         if (! is_dir(self::TEST_DATA_DIR)) {
-            mkdir(self::TEST_DATA_DIR, 0777, true);
+            mkdir(self::TEST_DATA_DIR, 0o777, true);
         }
     }
 
@@ -104,7 +104,7 @@ class SplCsvReaderTest extends TestCase
 
     public function test_read_csv_can_count_sample_records(): void
     {
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath($this->filePath);
         $count = $csvReader->getRecordCount();
         $this->assertEquals(count($this->data) - 1, $count);
@@ -112,7 +112,7 @@ class SplCsvReaderTest extends TestCase
 
     public function test_read_csv_can_get_header(): void
     {
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
         $header = $csvReader->getHeader();
         $this->assertEquals(['name', 'score'], $header);
@@ -121,7 +121,7 @@ class SplCsvReaderTest extends TestCase
     public function test_read_csv_can_get_record(): void
     {
         $data = $this->data;
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
         $record = $csvReader->getRecord();
         $this->assertEquals(['0' => 'name', '1' => 'score'], $record);
@@ -133,7 +133,7 @@ class SplCsvReaderTest extends TestCase
 
     public function test_read_csv_can_get_current_position(): void
     {
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
         $csvReader->getRecord();
         $csvReader->getRecord();
@@ -143,7 +143,7 @@ class SplCsvReaderTest extends TestCase
 
     public function test_read_csv_can_rewind(): void
     {
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
         $csvReader->getRecord();
         $csvReader->getRecord();
@@ -155,7 +155,7 @@ class SplCsvReaderTest extends TestCase
     public function test_read_csv_can_seek(): void
     {
         $data = $this->data;
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
         $csvReader->rewind();
         $record = $csvReader->seek(3);
@@ -170,12 +170,12 @@ class SplCsvReaderTest extends TestCase
         $emptyFilePath = self::TEST_DATA_DIR.'/empty.csv';
 
         if (! is_dir(dirname($emptyFilePath))) {
-            mkdir(dirname($emptyFilePath), 0777, true);
+            mkdir(dirname($emptyFilePath), 0o777, true);
         }
 
         file_put_contents($emptyFilePath, '');
 
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->setSource($emptyFilePath);
         $csvReader->getRecordCount();
     }
@@ -184,14 +184,14 @@ class SplCsvReaderTest extends TestCase
     {
         $this->expectException(FileNotFoundException::class);
 
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::TEST_DATA_DIR.'/nonexistent.csv');
         $csvReader->getRecordCount();
     }
 
     public function test_read_csv_can_get_source(): void
     {
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
         $source = $csvReader->getSource();
         $this->assertEquals(self::SAMPLE_CSV, $source);
@@ -199,7 +199,7 @@ class SplCsvReaderTest extends TestCase
 
     public function test_read_csv_can_set_source(): void
     {
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->setSource(self::SAMPLE_CSV);
         $source = $csvReader->getSource();
         $this->assertEquals(self::SAMPLE_CSV, $source);
@@ -207,9 +207,9 @@ class SplCsvReaderTest extends TestCase
 
     public function test_read_csv_can_set_config(): void
     {
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->setSource(self::SAMPLE_CSV);
-        $desiredConfig = (new CsvConfig)
+        $desiredConfig = (new CsvConfig())
             ->setDelimiter('@')
             ->setEnclosure('"')
             ->setEscape('\\');
@@ -227,7 +227,7 @@ class SplCsvReaderTest extends TestCase
         $malformedData = "col1,col2\nvalue1,\"unclosed quote\nvalue3,value4";
         file_put_contents(self::SAMPLE_CSV, $malformedData);
 
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->setSource(self::SAMPLE_CSV);
 
         $record = $csvReader->getRecord();
@@ -251,7 +251,7 @@ class SplCsvReaderTest extends TestCase
         ];
         $filePath = $this->createConfiguredTestFile($data, $config);
 
-        $csvReader = new SplCsvReader;
+        $csvReader = new SplCsvReader();
         $csvReader->setSource($filePath);
         $csvReader->setConfig($config);
 
@@ -279,28 +279,28 @@ class SplCsvReaderTest extends TestCase
     {
         return [
             'custom delimiter' => [
-                (new CsvConfig)->setDelimiter('@'),
+                (new CsvConfig())->setDelimiter('@'),
                 [
                     ['col1', 'col2'],
                     ['value1', 'value2'],
                 ],
             ],
             'custom enclosure' => [
-                (new CsvConfig)->setEnclosure('\''),
+                (new CsvConfig())->setEnclosure('\''),
                 [
                     ['col1', 'col2'],
                     ['value1', 'value2'],
                 ],
             ],
             'tab delimiter' => [
-                (new CsvConfig)->setDelimiter("\t"),
+                (new CsvConfig())->setDelimiter("\t"),
                 [
                     ['col1', 'col2'],
                     ['value1', 'value2'],
                 ],
             ],
             'pipe delimiter' => [
-                (new CsvConfig)->setDelimiter('|'),
+                (new CsvConfig())->setDelimiter('|'),
                 [
                     ['col1', 'col2'],
                     ['value1', 'value2'],
@@ -313,7 +313,7 @@ class SplCsvReaderTest extends TestCase
     {
         return [
             'empty delimiter' => [
-                (new CsvConfig)->setDelimiter(''),
+                (new CsvConfig())->setDelimiter(''),
                 InvalidConfigurationException::class,
             ],
         ];

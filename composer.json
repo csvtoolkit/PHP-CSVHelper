@@ -13,7 +13,11 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
-        "laravel/pint": "^v1.20.0",
+        "friendsofphp/php-cs-fixer": "^3.75",
+        "maglnet/composer-require-checker": "^4.7",
+        "mockery/mockery": "^1.6",
+        "phpbench/phpbench": "^1.2",
+        "phpro/grumphp": "^2.13",
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^11.5",
         "rector/rector": "^2.0",
@@ -33,24 +37,33 @@
     "prefer-stable": true,
     "config": {
         "sort-packages": true,
-        "preferred-install": "dist"
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "phpro/grumphp": true,
+            "maglnet/composer-require-checker": true
+        }
     },
     "scripts": {
         "refacto": "rector",
-        "lint": "pint",
         "test:refacto": "rector --dry-run",
-        "test:lint": "pint --test",
         "test:types": "phpstan analyse --ansi",
         "test:unit": "phpunit --colors=always",
+        "test:bench": "vendor/bin/phpbench run --report=aggregate",
         "test": [
-            "@test:refacto",
-            "@test:lint",
-            "@test:types",
-            "@test:unit"
+            "grumphp run"
         ],
         "fix": [
             "@refacto",
-            "@lint"
+            "PHP_CS_FIXER_IGNORE_ENV=1 vendor/bin/php-cs-fixer fix --allow-risky=yes"
+        ],
+        "bench": [
+            "@test:bench"
+        ],
+        "post-install-cmd": [
+            "grumphp git:init"
+        ],
+        "post-update-cmd": [
+            "grumphp git:init"
         ]
     }
 }

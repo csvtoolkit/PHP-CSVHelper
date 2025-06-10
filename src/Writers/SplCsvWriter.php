@@ -19,7 +19,7 @@ class SplCsvWriter extends AbstractCsvWriter
         ?string $target = null,
         ?CsvConfigInterface $config = null
     ) {
-        $this->config = $config ?? new CsvConfig;
+        $this->config = $config ?? new CsvConfig();
 
         if ($target !== null) {
             $this->setTarget($target);
@@ -50,7 +50,7 @@ class SplCsvWriter extends AbstractCsvWriter
     public function getConfig(): CsvConfigInterface
     {
         if (! isset($this->config)) {
-            $this->config = new CsvConfig;
+            $this->config = new CsvConfig();
         }
 
         return $this->config;

@@ -21,7 +21,7 @@ class SplCsvReader extends AbstractCsvReader
         ?string $source = null,
         ?CsvConfigInterface $config = null
     ) {
-        $this->config = $config ?? new CsvConfig;
+        $this->config = $config ?? new CsvConfig();
 
         if ($source !== null) {
             $this->setSource($source);

@@ -1,0 +1,68 @@
+grumphp:
+    hooks_dir: ~
+    hooks_preset: local
+    git_hook_variables:
+        EXEC_GRUMPHP_COMMAND: exec
+        ENV: {}
+    stop_on_failure: false
+    ignore_unstaged_changes: false
+    hide_circumvention_tip: false
+    process_timeout: 60
+    parallel:
+        enabled: true
+        max_workers: 32
+    fixer:
+        enabled: true
+        fix_by_default: false
+    environment:
+        files: []
+        variables: 
+            PHP_CS_FIXER_IGNORE_ENV: true
+        paths: []
+    tasks:
+        composer:
+            file: ./composer.json
+            no_check_all: false
+            no_check_lock: false
+            no_check_publish: false
+            no_local_repository: false
+            with_dependencies: true
+            strict: true
+        composer_require_checker:
+            composer_file: composer.json
+            config_file: ~
+            ignore_parse_errors: false
+            triggered_by: ['composer.json', 'composer.lock', '*.php']
+        phpcsfixer:
+            config: .php-cs-fixer.php
+            config_contains_finder: true
+            verbose: true
+            diff: true
+            using_cache: true
+            allow_risky: true
+            triggered_by: ['php']
+        phpstan:
+            configuration: phpstan.neon.dist
+            level: max
+            triggered_by: ['php']
+            memory_limit: "1G"
+            use_grumphp_paths: true
+        rector:
+            config: rector.php
+            triggered_by: ['php']
+            ignore_patterns:
+                - vendor/
+            clear_cache: true
+            no_diffs: false
+    testsuites:
+        git_pre_commit:
+            tasks:
+                - composer
+                - composer_require_checker
+                - phpcsfixer
+                - phpstan
+                - rector
+    extensions: []
+    ascii:
+        failed: ~
+        succeeded: ~ 

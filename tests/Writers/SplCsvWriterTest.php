@@ -36,13 +36,13 @@ final class SplCsvWriterTest extends TestCase
     private function setupTestDirectory(): void
     {
         if (! is_dir(self::TEST_DATA_DIR)) {
-            mkdir(self::TEST_DATA_DIR, 0777, true);
+            mkdir(self::TEST_DATA_DIR, 0o777, true);
         }
     }
 
     private function initializeConfigs(): void
     {
-        $this->defaultConfig = (new CsvConfig)
+        $this->defaultConfig = (new CsvConfig())
             ->setDelimiter(',')
             ->setEnclosure('"')
             ->setEscape('\\');
@@ -94,7 +94,7 @@ final class SplCsvWriterTest extends TestCase
     #[Test]
     public function write_should_handle_custom_delimiters_and_escaping(): void
     {
-        $config = (new CsvConfig)
+        $config = (new CsvConfig())
             ->setDelimiter(';')
             ->setEnclosure("'")
             ->setEscape('\\');
@@ -160,21 +160,21 @@ final class SplCsvWriterTest extends TestCase
     {
         return [
             'tab_delimiter' => [
-                (new CsvConfig)
+                (new CsvConfig())
                     ->setDelimiter("\t")
                     ->setEnclosure('"'),
                 [['col1', 'col2'], ['val1', 'val2']],
                 "col1\tcol2\nval1\tval2\n",
             ],
             'pipe_delimiter' => [
-                (new CsvConfig)
+                (new CsvConfig())
                     ->setDelimiter('|')
                     ->setEnclosure('"'),
                 [['a', 'b'], ['1', '2']],
                 "a|b\n1|2\n",
             ],
             'custom_enclosure' => [
-                (new CsvConfig)
+                (new CsvConfig())
                     ->setDelimiter(',')
                     ->setEnclosure('*')
                     ->setEscape('\\'),

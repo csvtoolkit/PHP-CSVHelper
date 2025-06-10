@@ -2,7 +2,12 @@ parameters:
     level: max
     paths:
         - src
+    excludePaths:
+        - tests/*
     reportUnmatchedIgnoredErrors: true
     ignoreErrors:
         -
             identifier: missingType.iterableValue
+        - 
+            message: '#Call to an undefined method PhpCsFixer\\ConfigInterface::setParallelConfig\(\)#'
+            path: .php-cs-fixer.php
