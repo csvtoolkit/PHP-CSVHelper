@@ -196,11 +196,33 @@ class CsvReader extends AbstractCsvReader
     }
 
     /**
-     * @return bool True if more records exist
+     * @return bool True if file contains any records
      */
     public function hasRecords(): bool
     {
-        return $this->getRecordCount() > 0;
+        /** @var FastCSVReader $reader */
+        $reader = $this->getReader();
+
+        $currentPosition = $reader->getPosition();
+
+        // If we're past position 0, records definitely exist
+        if ($currentPosition > 0) {
+            return true;
+        }
+
+        // If we're at position 0 or before, check if there's a next record
+        return $reader->hasNext();
+    }
+
+    /**
+     * @return bool True if more records exist from current position (EOF check)
+     */
+    public function hasNext(): bool
+    {
+        /** @var FastCSVReader $reader */
+        $reader = $this->getReader();
+
+        return $reader->hasNext();
     }
 
     /**

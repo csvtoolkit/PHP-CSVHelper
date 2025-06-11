@@ -106,12 +106,13 @@ class CsvWriter extends AbstractCsvWriter
     /**
      * Writes multiple records to the CSV file
      *
-     * @param array<array> $records Array of records to write
+     * @param array<int, array> $records Array of records to write
      * @throws CsvWriterException
      */
     public function writeAll(array $records): void
     {
         foreach ($records as $record) {
+            /** @var array $record */
             $this->write($record);
         }
     }

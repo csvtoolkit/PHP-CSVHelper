@@ -204,9 +204,25 @@ class SplCsvReader extends AbstractCsvReader
     }
 
     /**
-     * @return bool True if more records exist
+     * @return bool True if file contains any records
      */
     public function hasRecords(): bool
+    {
+        $currentPosition = $this->getCurrentPosition();
+
+        // If we're past position 0, records definitely exist
+        if ($currentPosition > 0) {
+            return true;
+        }
+
+        // If we're at position 0, check if there's a next record
+        return $this->hasNext();
+    }
+
+    /**
+     * @return bool True if more records exist from current position (EOF check)
+     */
+    public function hasNext(): bool
     {
         /** @var SplFileObject $reader */
         $reader = $this->getReader();
