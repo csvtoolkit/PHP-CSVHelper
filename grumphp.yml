@@ -46,7 +46,7 @@ grumphp:
             level: max
             triggered_by: ['php']
             memory_limit: "1G"
-            use_grumphp_paths: true
+            use_grumphp_paths: false
         rector:
             config: rector.php
             triggered_by: ['php']

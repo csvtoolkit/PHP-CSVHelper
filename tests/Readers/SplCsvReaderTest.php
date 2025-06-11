@@ -382,9 +382,12 @@ class SplCsvReaderTest extends TestCase
 
         $this->expectException(EmptyFileException::class);
         $csvReader->setSource($emptyFilePath);
-        $csvReader->hasRecords();
 
-        unlink($emptyFilePath);
+        try {
+            $csvReader->hasRecords();
+        } finally {
+            @unlink($emptyFilePath);
+        }
     }
 
     #[Test]
