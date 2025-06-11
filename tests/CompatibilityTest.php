@@ -508,12 +508,37 @@ class CompatibilityTest extends TestCase
             // Both should throw exception or handle empty file identically
             try {
                 $splCount = $splReader->getRecordCount();
-                $csvCount = $csvReader->getRecordCount();
-                $this->assertEquals($splCount, $csvCount);
+
+                try {
+                    $csvCount = $csvReader->getRecordCount();
+                    $this->assertEquals($splCount, $csvCount, 'Both readers should return the same count for empty files');
+                } catch (\Exception $csvException) {
+                    $this->fail('SplCsvReader succeeded but CsvReader threw exception: ' . $csvException->getMessage());
+                }
+            } catch (\Exception $splException) {
+                // If SplCsvReader throws, CsvReader should throw the same type
+                try {
+                    $csvReader->getRecordCount();
+                    $this->fail('SplCsvReader threw exception but CsvReader succeeded');
+                } catch (\Exception $csvException) {
+                    $this->assertEquals(
+                        $splException::class,
+                        $csvException::class,
+                        'Both readers should throw the same type of exception for empty files'
+                    );
+                }
+            }
+        } else {
+            // If FastCSV is not loaded, just ensure SplCsvReader handles empty files gracefully
+            try {
+                $count = $splReader->getRecordCount();
+                $this->assertIsInt($count, 'SplCsvReader should return an integer count for empty files');
             } catch (\Exception $e) {
-                // Both should throw the same type of exception
-                $this->expectException($e::class);
-                $csvReader->getRecordCount();
+                $this->assertInstanceOf(
+                    \Phpcsv\CsvHelper\Exceptions\EmptyFileException::class,
+                    $e,
+                    'SplCsvReader should throw EmptyFileException for empty files'
+                );
             }
         }
     }

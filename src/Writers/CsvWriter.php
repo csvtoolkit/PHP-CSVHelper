@@ -8,7 +8,7 @@ use FastCSVWriter;
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 use Phpcsv\CsvHelper\Exceptions\CsvWriterException;
-use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
+use Phpcsv\CsvHelper\Exceptions\DirectoryNotFoundException;
 use SplFileObject;
 
 /**
@@ -62,7 +62,7 @@ class CsvWriter extends AbstractCsvWriter
      * Initializes the FastCSVWriter with current configuration.
      *
      * @throws CsvWriterException If writer creation fails
-     * @throws FileNotFoundException If directory doesn't exist
+     * @throws DirectoryNotFoundException If directory doesn't exist
      */
     public function setWriter(): void
     {
@@ -75,7 +75,7 @@ class CsvWriter extends AbstractCsvWriter
         // Check if directory exists
         $directory = dirname($filePath);
         if (! is_dir($directory)) {
-            throw new FileNotFoundException("Directory does not exist: $directory");
+            throw new DirectoryNotFoundException($directory);
         }
 
         $this->fastCsvConfig = new FastCSVConfig();
@@ -88,7 +88,7 @@ class CsvWriter extends AbstractCsvWriter
         try {
             $this->writer = new FastCSVWriter($this->fastCsvConfig, $this->header ?? []);
         } catch (Exception $e) {
-            throw new FileNotFoundException("Failed to open file for writing: " . $filePath, 0, $e);
+            throw new CsvWriterException("Failed to initialize FastCSV writer: " . $e->getMessage(), $e->getCode(), $e);
         }
     }
 

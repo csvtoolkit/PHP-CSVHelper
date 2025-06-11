@@ -49,9 +49,9 @@ interface CsvReaderInterface
     /**
      * Gets the record at the current position without advancing.
      *
-     * @return array|string|false Array of field values, or false if no record has been read
+     * @return array|false Array of field values, or false if no record has been read
      */
-    public function getRecord(): array|string|false;
+    public function getRecord(): array|false;
 
     /**
      * Reads the next record sequentially.
@@ -63,9 +63,9 @@ interface CsvReaderInterface
     /**
      * Gets the header row if headers are enabled.
      *
-     * @return string|false|array Array of header field names, or false if headers disabled
+     * @return array|false Array of header field names, or false if headers disabled
      */
-    public function getHeader(): string|false|array;
+    public function getHeader(): array|false;
 
     /**
      * Checks if the CSV file contains any data records.
