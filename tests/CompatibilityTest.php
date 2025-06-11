@@ -2,11 +2,12 @@
 
 namespace Tests;
 
-use Phpcsv\CsvHelper\Configs\CsvConfig;
-use Phpcsv\CsvHelper\Readers\CsvReader;
-use Phpcsv\CsvHelper\Readers\SplCsvReader;
-use Phpcsv\CsvHelper\Writers\CsvWriter;
-use Phpcsv\CsvHelper\Writers\SplCsvWriter;
+use CsvToolkit\Configs\CsvConfig;
+use CsvToolkit\Exceptions\EmptyFileException;
+use CsvToolkit\Readers\CsvReader;
+use CsvToolkit\Readers\SplCsvReader;
+use CsvToolkit\Writers\CsvWriter;
+use CsvToolkit\Writers\SplCsvWriter;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -201,13 +202,13 @@ class CompatibilityTest extends TestCase
 
         // Initial position should be -1
         $this->assertEquals(-1, $splReader->getCurrentPosition());
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof \CsvToolkit\Readers\CsvReader) {
             $this->assertEquals(-1, $csvReader->getCurrentPosition());
         }
 
         // After first read, position should be 0
         $splReader->nextRecord();
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof \CsvToolkit\Readers\CsvReader) {
             $csvReader->nextRecord();
             $this->assertEquals($splReader->getCurrentPosition(), $csvReader->getCurrentPosition());
         }
@@ -215,7 +216,7 @@ class CompatibilityTest extends TestCase
 
         // After second read, position should be 1
         $splReader->nextRecord();
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof \CsvToolkit\Readers\CsvReader) {
             $csvReader->nextRecord();
             $this->assertEquals($splReader->getCurrentPosition(), $csvReader->getCurrentPosition());
         }
@@ -223,7 +224,7 @@ class CompatibilityTest extends TestCase
 
         // After rewind, position should be -1
         $splReader->rewind();
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof \CsvToolkit\Readers\CsvReader) {
             $csvReader->rewind();
             $this->assertEquals($splReader->getCurrentPosition(), $csvReader->getCurrentPosition());
         }
@@ -245,7 +246,7 @@ class CompatibilityTest extends TestCase
 
         // Seek to position 2
         $splRecord = $splReader->seek(2);
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof \CsvToolkit\Readers\CsvReader) {
             $csvRecord = $csvReader->seek(2);
             $this->assertEquals($splRecord, $csvRecord, 'Seek results should be identical');
             $this->assertEquals($splReader->getCurrentPosition(), $csvReader->getCurrentPosition());
@@ -256,7 +257,7 @@ class CompatibilityTest extends TestCase
 
         // Seek beyond bounds should return false
         $splResult = $splReader->seek(100);
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof \CsvToolkit\Readers\CsvReader) {
             $csvResult = $csvReader->seek(100);
             $this->assertEquals($splResult, $csvResult, 'Out of bounds seek should behave identically');
         }
@@ -278,7 +279,7 @@ class CompatibilityTest extends TestCase
 
         // hasRecords should be identical
         $splHasRecords = $splReader->hasRecords();
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof CsvReader) {
             $csvHasRecords = $csvReader->hasRecords();
             $this->assertEquals($splHasRecords, $csvHasRecords, 'hasRecords should be identical');
         }
@@ -286,7 +287,7 @@ class CompatibilityTest extends TestCase
 
         // hasNext should be identical initially
         $splHasNext = $splReader->hasNext();
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof CsvReader) {
             $csvHasNext = $csvReader->hasNext();
             $this->assertEquals($splHasNext, $csvHasNext, 'hasNext should be identical initially');
         }
@@ -294,13 +295,13 @@ class CompatibilityTest extends TestCase
 
         // Read all records and check hasNext at the end
         while ($splReader->nextRecord() !== false) {
-            if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+            if ($csvReader instanceof CsvReader) {
                 $csvReader->nextRecord();
             }
         }
 
         $splHasNext = $splReader->hasNext();
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof CsvReader) {
             $csvHasNext = $csvReader->hasNext();
             $this->assertEquals($splHasNext, $csvHasNext, 'hasNext should be identical after reading all');
         }
@@ -332,7 +333,7 @@ class CompatibilityTest extends TestCase
         $this->assertEquals($config->getEnclosure(), $splReader->getConfig()->getEnclosure());
         $this->assertEquals($config->hasHeader(), $splReader->getConfig()->hasHeader());
 
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof CsvReader) {
             $this->assertEquals($config->getDelimiter(), $csvReader->getConfig()->getDelimiter());
             $this->assertEquals($config->getEnclosure(), $csvReader->getConfig()->getEnclosure());
             $this->assertEquals($config->hasHeader(), $csvReader->getConfig()->hasHeader());
@@ -340,7 +341,7 @@ class CompatibilityTest extends TestCase
 
         // Reading should produce identical results
         $splRecord = $splReader->nextRecord();
-        if ($csvReader instanceof \Phpcsv\CsvHelper\Readers\CsvReader) {
+        if ($csvReader instanceof CsvReader) {
             $csvRecord = $csvReader->nextRecord();
             $this->assertEquals($splRecord, $csvRecord, 'Config-based reading should produce identical results');
         }
@@ -363,13 +364,13 @@ class CompatibilityTest extends TestCase
         // Write same data to both
         foreach ($this->testData as $record) {
             $splWriter->write($record);
-            if ($csvWriter instanceof \Phpcsv\CsvHelper\Writers\CsvWriter) {
+            if ($csvWriter instanceof CsvWriter) {
                 $csvWriter->write($record);
             }
         }
 
         unset($splWriter);
-        if ($csvWriter instanceof \Phpcsv\CsvHelper\Writers\CsvWriter) {
+        if ($csvWriter instanceof CsvWriter) {
             unset($csvWriter);
         }
 
@@ -407,12 +408,12 @@ class CompatibilityTest extends TestCase
 
         // Write all data at once
         $splWriter->writeAll($this->testData);
-        if ($csvWriter instanceof \Phpcsv\CsvHelper\Writers\CsvWriter) {
+        if ($csvWriter instanceof CsvWriter) {
             $csvWriter->writeAll($this->testData);
         }
 
         unset($splWriter);
-        if ($csvWriter instanceof \Phpcsv\CsvHelper\Writers\CsvWriter) {
+        if ($csvWriter instanceof CsvWriter) {
             unset($csvWriter);
         }
 
@@ -535,7 +536,7 @@ class CompatibilityTest extends TestCase
                 $this->assertIsInt($count, 'SplCsvReader should return an integer count for empty files');
             } catch (\Exception $e) {
                 $this->assertInstanceOf(
-                    \Phpcsv\CsvHelper\Exceptions\EmptyFileException::class,
+                    EmptyFileException::class,
                     $e,
                     'SplCsvReader should throw EmptyFileException for empty files'
                 );

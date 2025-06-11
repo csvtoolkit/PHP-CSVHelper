@@ -2,8 +2,8 @@
 
 namespace Tests\Configs;
 
-use Phpcsv\CsvHelper\Configs\CsvConfig;
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use CsvToolkit\Configs\CsvConfig;
+use CsvToolkit\Contracts\CsvConfigInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

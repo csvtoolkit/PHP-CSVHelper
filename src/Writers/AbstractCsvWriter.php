@@ -1,10 +1,10 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Writers;
+namespace CsvToolkit\Writers;
 
+use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Contracts\CsvWriterInterface;
 use FastCSVWriter;
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
-use Phpcsv\CsvHelper\Contracts\CsvWriterInterface;
 use SplFileObject;
 
 /**

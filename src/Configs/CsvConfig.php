@@ -1,8 +1,8 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Configs;
+namespace CsvToolkit\Configs;
 
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use CsvToolkit\Contracts\CsvConfigInterface;
 
 /**
  * Concrete implementation of CSV configuration.

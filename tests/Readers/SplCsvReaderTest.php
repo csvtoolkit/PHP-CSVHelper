@@ -2,11 +2,11 @@
 
 namespace Tests\Readers;
 
-use Phpcsv\CsvHelper\Configs\CsvConfig;
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
-use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
-use Phpcsv\CsvHelper\Readers\SplCsvReader;
-use Phpcsv\CsvHelper\Writers\SplCsvWriter;
+use CsvToolkit\Configs\CsvConfig;
+use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Exceptions\FileNotFoundException;
+use CsvToolkit\Readers\SplCsvReader;
+use CsvToolkit\Writers\SplCsvWriter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

@@ -1,5 +1,5 @@
 {
-    "name": "phpcsv/csv-helper",
+    "name": "csvtoolkit/csv-helper",
     "description": "A PHP library for reading and writing CSV files with ease. CsvHelper supports custom delimiters, enclosures, and escape characters, providing flexible and efficient CSV data handling. It includes implementations using PHP's SplFileObject and other popular CSV libraries, ensuring compatibility with various CSV formats.",
     "license": "MIT",
     "authors": [
@@ -24,7 +24,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Phpcsv\\CsvHelper\\": "src/"
+            "CsvToolkit\\": "src/"
         }
     },
     "autoload-dev": {
