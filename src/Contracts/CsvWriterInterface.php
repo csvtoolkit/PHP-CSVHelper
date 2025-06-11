@@ -2,11 +2,12 @@
 
 namespace Phpcsv\CsvHelper\Contracts;
 
+use FastCSVWriter;
 use SplFileObject;
 
 interface CsvWriterInterface
 {
-    public function getWriter(): ?SplFileObject;
+    public function getWriter(): SplFileObject|FastCSVWriter|null;
 
     public function getConfig(): CsvConfigInterface;
 

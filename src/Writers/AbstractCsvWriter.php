@@ -2,6 +2,7 @@
 
 namespace Phpcsv\CsvHelper\Writers;
 
+use FastCSVWriter;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 use Phpcsv\CsvHelper\Contracts\CsvWriterInterface;
 use SplFileObject;
@@ -12,14 +13,14 @@ abstract class AbstractCsvWriter implements CsvWriterInterface
 
     protected CsvConfigInterface $config;
 
-    protected ?SplFileObject $writer = null;
+    protected SplFileObject|FastCSVWriter|null $writer = null;
 
     abstract public function __construct(
         ?string $target = null,
         ?CsvConfigInterface $config = null
     );
 
-    abstract public function getWriter(): ?SplFileObject;
+    abstract public function getWriter(): SplFileObject|FastCSVWriter|null;
 
     abstract public function getConfig(): CsvConfigInterface;
 
