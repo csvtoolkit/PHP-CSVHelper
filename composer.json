@@ -31,7 +31,10 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/"
-        }
+        },
+        "files": [
+            "stubs/fastcsv.php"
+        ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
@@ -50,7 +53,8 @@
         "test:unit": "phpunit --colors=always",
         "test:bench": "vendor/bin/phpbench run --report=aggregate",
         "test": [
-            "grumphp run"
+            "grumphp run",
+            "@test:unit"
         ],
         "fix": [
             "@refacto",

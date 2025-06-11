@@ -2,23 +2,27 @@
 
 namespace Phpcsv\CsvHelper\Readers;
 
+use Exception;
+use FastCSVConfig;
 use FastCSVReader;
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use Phpcsv\CsvHelper\Exceptions\CsvReaderException;
 use Phpcsv\CsvHelper\Exceptions\EmptyFileException;
 use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
 use Phpcsv\CsvHelper\Exceptions\FileNotReadableException;
-use RuntimeException;
 use SplFileObject;
 
 /**
- * CSV Reader implementation using SplFileObject
+ * CSV Reader implementation using FastCSV extension
  *
- * This class provides functionality to read CSV files using PHP's built-in SplFileObject.
- * It supports custom delimiters, enclosures, and escape characters.
+ * This class provides high-performance functionality to read CSV files using the FastCSV C extension.
+ * It supports custom delimiters, enclosures, and escape characters with native C performance.
  */
-class SplCsvReader extends AbstractCsvReader
+class CsvReader extends AbstractCsvReader
 {
+    private ?FastCSVConfig $fastCsvConfig = null;
+
     public function __construct(
         ?string $source = null,
         ?CsvConfigInterface $config = null
@@ -34,10 +38,11 @@ class SplCsvReader extends AbstractCsvReader
      * @throws FileNotFoundException
      * @throws FileNotReadableException
      * @throws EmptyFileException
+     * @throws CsvReaderException
      */
     public function getReader(): null|SplFileObject|FastCSVReader
     {
-        if (! $this->reader instanceof SplFileObject) {
+        if (! $this->reader instanceof FastCSVReader) {
             $this->setReader();
         }
 
@@ -48,44 +53,44 @@ class SplCsvReader extends AbstractCsvReader
      * @throws FileNotFoundException
      * @throws FileNotReadableException
      * @throws EmptyFileException
+     * @throws CsvReaderException
      */
     public function setReader(): void
     {
         $filePath = $this->getConfig()->getPath();
-
         if (! file_exists($filePath)) {
             throw new FileNotFoundException($filePath);
         }
-
         if (! is_readable($filePath)) {
             throw new FileNotReadableException($filePath);
         }
 
-        try {
-            $this->reader = new SplFileObject($filePath);
-        } catch (RuntimeException $e) {
-            // SplFileObject throws RuntimeException for permission/access issues
-            if (str_contains($e->getMessage(), 'Permission denied') || str_contains($e->getMessage(), 'Failed to open stream')) {
-                throw new FileNotFoundException($filePath);
-            }
+        $this->fastCsvConfig = new FastCSVConfig();
+        $this->fastCsvConfig
+            ->setPath($filePath)
+            ->setDelimiter($this->config->getDelimiter())
+            ->setEnclosure($this->config->getEnclosure())
+            ->setEscape($this->config->getEscape())
+            ->setHasHeader($this->config->hasHeader())
+            ->setOffset($this->config->getOffset());
 
-            throw $e;
+        try {
+            $this->reader = new FastCSVReader($this->fastCsvConfig);
+        } catch (Exception $e) {
+            throw new CsvReaderException("Failed to initialize FastCSV reader: " . $e->getMessage());
         }
 
-        if ($this->reader->getSize() === 0) {
+        if ($this->reader->getRecordCount() === 0 && ! $this->config->hasHeader()) {
             throw new EmptyFileException($filePath);
         }
 
-        $this->reader->setFlags(SplFileObject::READ_CSV);
-        $this->reader->setCsvControl(
-            $this->getConfig()->getDelimiter(),
-            $this->getConfig()->getEnclosure(),
-            $this->getConfig()->getEscape()
-        );
-
-        $this->position = 0;
         $this->recordCount = null;
         $this->header = null;
+    }
+
+    public function getConfig(): CsvConfigInterface
+    {
+        return $this->config;
     }
 
     /**
@@ -93,29 +98,33 @@ class SplCsvReader extends AbstractCsvReader
      */
     public function getRecordCount(): ?int
     {
-        if ($this->recordCount === null) {
-            $currentPosition = $this->getCurrentPosition();
-            /** @var SplFileObject $reader */
-            $reader = $this->getReader();
-            $this->rewind();
-            $reader->seek(PHP_INT_MAX);
-            $this->recordCount = $reader->key();
-            $reader->seek($currentPosition);
-            if ($this->config->hasHeader()) {
-                $this->recordCount--;
-            }
+        if ($this->recordCount !== null) {
+            return $this->recordCount;
         }
+
+        /** @var FastCSVReader $reader */
+        $reader = $this->getReader();
+
+        $this->recordCount = $reader->getRecordCount();
 
         return $this->recordCount;
     }
 
     public function rewind(): void
     {
-        if (! $this->reader instanceof SplFileObject) {
+        if (! $this->reader instanceof FastCSVReader) {
             return;
         }
-        $this->position = 0;
         $this->reader->rewind();
+    }
+
+    public function getCurrentPosition(): int
+    {
+        if ($this->reader instanceof FastCSVReader) {
+            return $this->reader->getPosition();
+        }
+
+        return 0;
     }
 
     /**
@@ -123,22 +132,14 @@ class SplCsvReader extends AbstractCsvReader
      */
     public function getRecord(): array|false
     {
-        /** @var SplFileObject $reader */
+        /** @var FastCSVReader $reader */
         $reader = $this->getReader();
 
-        $reader->seek($this->getCurrentPosition());
-        $record = $reader->current();
 
-        $this->position++;
-
+        $record = $reader->nextRecord();
         if ($record === false) {
             return false;
         }
-
-        if (is_string($record)) {
-            return false;
-        }
-
         if ($this->isInvalidRecord($record)) {
             return false;
         }
@@ -159,20 +160,15 @@ class SplCsvReader extends AbstractCsvReader
             return $this->header;
         }
 
-        $currentPosition = $this->getCurrentPosition();
-
-        $this->rewind();
-        $record = $this->getRecord();
-        if ($record === false) {
-            return false;
-        }
-        /** @var SplFileObject $reader */
+        /** @var FastCSVReader $reader */
         $reader = $this->getReader();
-        $reader->seek($currentPosition);
-        $this->position = $currentPosition;
-        $this->header = $record;
 
-        return $record;
+        $headers = $reader->getHeaders();
+        if ($headers !== false) {
+            $this->header = $headers;
+        }
+
+        return $headers;
     }
 
     /**
@@ -181,21 +177,17 @@ class SplCsvReader extends AbstractCsvReader
      */
     public function seek(int $position): array|false
     {
-        /** @var SplFileObject $reader */
+        /** @var FastCSVReader $reader */
         $reader = $this->getReader();
-        $this->position = $position;
-        $reader->seek($position);
 
-        $record = $reader->current();
+        if (! $reader->seek($position)) {
+            return false;
+        }
 
+        $record = $reader->nextRecord();
         if ($record === false) {
             return false;
         }
-
-        if (is_string($record)) {
-            return false;
-        }
-
         if ($this->isInvalidRecord($record)) {
             return false;
         }
@@ -208,10 +200,7 @@ class SplCsvReader extends AbstractCsvReader
      */
     public function hasRecords(): bool
     {
-        /** @var SplFileObject $reader */
-        $reader = $this->getReader();
-
-        return ! $reader->eof();
+        return $this->getRecordCount() > 0;
     }
 
     /**
@@ -221,35 +210,40 @@ class SplCsvReader extends AbstractCsvReader
     {
         $this->config->setPath($source);
 
-        if ($this->reader instanceof \SplFileObject) {
-            $this->setReader();
-        }
+        $this->reader = null;
+        $this->fastCsvConfig = null;
+        $this->recordCount = null;
+        $this->header = null;
+    }
+
+    public function getSource(): string
+    {
+        return $this->config->getPath();
     }
 
     public function setConfig(CsvConfigInterface $config): void
     {
         $this->config = $config;
 
-        $this->reset();
+        if ($this->reader instanceof FastCSVReader && $this->fastCsvConfig instanceof FastCSVConfig) {
+            $this->fastCsvConfig
+                ->setPath($config->getPath())
+                ->setDelimiter($config->getDelimiter())
+                ->setEnclosure($config->getEnclosure())
+                ->setEscape($config->getEscape())
+                ->setHasHeader($config->hasHeader())
+                ->setOffset($config->getOffset());
 
-        if ($this->reader instanceof \SplFileObject) {
-            $this->setReader();
+            if ($this->reader->setConfig($this->fastCsvConfig)) {
+                $this->recordCount = null;
+                $this->header = null;
+
+                return;
+            }
         }
-    }
 
-    public function getConfig(): CsvConfigInterface
-    {
-        return $this->config;
-    }
-
-    public function getCurrentPosition(): int
-    {
-        return $this->position;
-    }
-
-    public function getSource(): string
-    {
-        return $this->config->getPath();
+        $this->reset();
+        $this->setReader();
     }
 
     /**
@@ -263,9 +257,17 @@ class SplCsvReader extends AbstractCsvReader
         return count($record) === 1 && ($record[0] === null || $record[0] === '');
     }
 
-    private function reset(): void
+    public function __destruct()
+    {
+        if ($this->reader instanceof FastCSVReader) {
+            $this->reader->close();
+        }
+    }
+
+    public function reset(): void
     {
         $this->reader = null;
+        $this->fastCsvConfig = null;
         $this->recordCount = null;
         $this->header = null;
     }

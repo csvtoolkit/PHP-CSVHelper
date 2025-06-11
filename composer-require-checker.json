@@ -1,0 +1,8 @@
+{
+    "symbol-whitelist": [
+        "FastCSVConfig",
+        "FastCSVReader",
+        "FastCSVWriter"
+    ],
+    "scan-files": []
+} 

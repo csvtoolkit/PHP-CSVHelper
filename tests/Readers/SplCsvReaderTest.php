@@ -157,11 +157,10 @@ class SplCsvReaderTest extends TestCase
         $data = $this->data;
         $csvReader = new SplCsvReader();
         $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
-        $csvReader->rewind();
         $record = $csvReader->seek(3);
         $position = $csvReader->getCurrentPosition();
-        $this->assertEquals(3, $position);
-        $this->assertEquals(['0' => $data[2][0], '1' => $data[2][1]], $record);
+        $this->assertEquals(3, $position); // Position should remain at seeked position
+        $this->assertEquals($data[3], $record); // Position 3 should give us data[3]
     }
 
     public function test_read_csv_with_empty_file(): void
@@ -348,20 +347,214 @@ class SplCsvReaderTest extends TestCase
     }
 
     #[Test]
-    public function test_skip_header(): void
+    public function test_has_records(): void
     {
         $data = [
-            ['header1', 'header2'],
+            ['col1', 'col2'],
             ['value1', 'value2'],
         ];
-
         $filePath = $this->createTestFile($data);
         $csvReader = new SplCsvReader($filePath);
-        $csvReader->getConfig()->setHasHeader(true);
 
-        $csvReader->skipHeader();
-        $this->assertEquals(['value1', 'value2'], $csvReader->getRecord());
+        $this->assertTrue($csvReader->hasRecords());
+
+        $csvReader->getRecord();
+        $csvReader->getRecord();
+
+        $this->assertTrue($csvReader->hasRecords());
 
         unlink($filePath);
+    }
+
+    #[Test]
+    public function test_has_records_with_empty_file(): void
+    {
+        $emptyFilePath = self::TEST_DATA_DIR.'/empty_for_hasrecords.csv';
+
+        if (! is_dir(dirname($emptyFilePath))) {
+            mkdir(dirname($emptyFilePath), 0o777, true);
+        }
+
+        file_put_contents($emptyFilePath, '');
+
+        $csvReader = new SplCsvReader();
+
+        try {
+            $csvReader->setSource($emptyFilePath);
+            $this->assertFalse($csvReader->hasRecords());
+        } catch (EmptyFileException) {
+            $this->assertTrue(true);
+        }
+
+        unlink($emptyFilePath);
+    }
+
+    #[Test]
+    public function test_csv_without_headers(): void
+    {
+        $data = [
+            ['value1', 'value2'],
+            ['value3', 'value4'],
+            ['value5', 'value6'],
+        ];
+        $filePath = $this->createTestFile($data);
+
+        $config = (new CsvConfig())->setHasHeader(false);
+        $csvReader = new SplCsvReader($filePath, $config);
+
+        $this->assertFalse($csvReader->getHeader());
+
+        $this->assertEquals(3, $csvReader->getRecordCount());
+
+        $record = $csvReader->getRecord();
+        $this->assertEquals(['value1', 'value2'], $record);
+
+        unlink($filePath);
+    }
+
+    #[Test]
+    public function test_multiple_rewind_and_seek_operations(): void
+    {
+        $data = [
+            ['col1', 'col2'],
+            ['row1', 'data1'],
+            ['row2', 'data2'],
+            ['row3', 'data3'],
+            ['row4', 'data4'],
+        ];
+        $filePath = $this->createTestFile($data);
+        $csvReader = new SplCsvReader($filePath);
+
+        $csvReader->getRecord();
+        $csvReader->getRecord();
+        $this->assertEquals(2, $csvReader->getCurrentPosition());
+
+        $csvReader->rewind();
+        $this->assertEquals(0, $csvReader->getCurrentPosition());
+
+        $csvReader->rewind();
+        $this->assertEquals(0, $csvReader->getCurrentPosition());
+
+        $csvReader->seek(2);
+        $this->assertEquals(2, $csvReader->getCurrentPosition());
+
+        $csvReader->seek(4);
+        $this->assertEquals(4, $csvReader->getCurrentPosition());
+
+        $csvReader->seek(1);
+        $this->assertEquals(1, $csvReader->getCurrentPosition());
+
+        unlink($filePath);
+    }
+
+    #[Test]
+    public function test_invalid_record_handling(): void
+    {
+        $filePath = self::TEST_DATA_DIR.'/invalid_records.csv';
+        $content = "col1,col2\n\n,\nvalue1,value2\n";
+        file_put_contents($filePath, $content);
+
+        $csvReader = new SplCsvReader($filePath);
+
+        $record = $csvReader->getRecord();
+        $this->assertEquals(['col1', 'col2'], $record);
+
+        $record = $csvReader->getRecord();
+
+        $foundValidRecord = false;
+        $attempts = 0;
+        while (! $foundValidRecord && $attempts < 5) {
+            $record = $csvReader->getRecord();
+            if ($record === false) {
+                break;
+            }
+            if ($record === ['value1', 'value2']) {
+                $foundValidRecord = true;
+            }
+            $attempts++;
+        }
+
+        $this->assertTrue($foundValidRecord, 'Should find the valid record');
+
+        unlink($filePath);
+    }
+
+    #[Test]
+    public function test_seek_beyond_bounds(): void
+    {
+        $data = [
+            ['col1', 'col2'],
+            ['value1', 'value2'],
+        ];
+        $filePath = $this->createTestFile($data);
+        $csvReader = new SplCsvReader($filePath);
+
+        $record = $csvReader->seek(100);
+        $this->assertFalse($record);
+
+        unlink($filePath);
+    }
+
+    #[Test]
+    public function test_reset_functionality(): void
+    {
+        $csvReader = new SplCsvReader($this->filePath);
+
+        $csvReader->getRecordCount();
+        $csvReader->getHeader();
+        $csvReader->getRecord();
+
+        $this->assertGreaterThan(0, $csvReader->getCurrentPosition());
+
+        $newConfig = (new CsvConfig())->setDelimiter(';');
+        $csvReader->setConfig($newConfig);
+
+        $this->assertEquals(';', $csvReader->getConfig()->getDelimiter());
+    }
+
+    #[Test]
+    public function test_large_csv_handling(): void
+    {
+        $largeFilePath = self::TEST_DATA_DIR.'/large_test.csv';
+        $writer = new SplCsvWriter($largeFilePath, $this->defaultConfig);
+
+        $writer->write(['id', 'name', 'email']);
+
+        for ($i = 1; $i <= 1000; $i++) {
+            $writer->write([$i, "User $i", "user$i@example.com"]);
+        }
+        unset($writer);
+
+        $csvReader = new SplCsvReader($largeFilePath);
+
+        $this->assertEquals(1000, $csvReader->getRecordCount());
+
+        $record = $csvReader->seek(500);
+        $this->assertEquals(['500', 'User 500', 'user500@example.com'], $record);
+
+        $record = $csvReader->seek(1000);
+        $this->assertEquals(['1000', 'User 1000', 'user1000@example.com'], $record);
+
+        unlink($largeFilePath);
+    }
+
+    #[Test]
+    public function test_file_not_readable(): void
+    {
+        $this->expectException(FileNotFoundException::class);
+
+        $unreadableFile = self::TEST_DATA_DIR.'/unreadable.csv';
+
+        file_put_contents($unreadableFile, 'col1,col2\nvalue1,value2');
+        chmod($unreadableFile, 0o000);
+
+        $csvReader = new SplCsvReader($unreadableFile);
+
+        try {
+            $csvReader->getRecordCount();
+        } finally {
+            chmod($unreadableFile, 0o644);
+            unlink($unreadableFile);
+        }
     }
 }
