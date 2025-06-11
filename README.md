@@ -236,7 +236,7 @@ We welcome contributions! Please follow these guidelines:
 - **Planned**:
   - Data mappers and transformers
   - Built-in validators
-  - QCSV (Quoted CSV) support
+  - QCSV (query CSV) support
   - Streaming support for very large files
   - CSV schema validation
 
