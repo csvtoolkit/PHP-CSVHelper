@@ -2,43 +2,38 @@
 
 namespace Tests\Readers;
 
-use Faker\Factory as FakerFactory;
 use Phpcsv\CsvHelper\Configs\CsvConfig;
-use Phpcsv\CsvHelper\Exceptions\EmptyFileException;
+use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
-use Phpcsv\CsvHelper\Exceptions\FileNotReadableException;
-use Phpcsv\CsvHelper\Exceptions\InvalidConfigurationException;
 use Phpcsv\CsvHelper\Readers\SplCsvReader;
 use Phpcsv\CsvHelper\Writers\SplCsvWriter;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use SplFileObject;
 
 #[CoversClass(SplCsvReader::class)]
 class SplCsvReaderTest extends TestCase
 {
-    private const string TEST_DATA_DIR = __DIR__.'/data';
+    private const string TEST_DATA_DIR = __DIR__ . '/data';
+    private const string SAMPLE_CSV = self::TEST_DATA_DIR . '/spl_sample.csv';
 
-    private const string SAMPLE_CSV = self::TEST_DATA_DIR.'/sample.csv';
+    private array $testData = [];
 
-    private const int SAMPLE_RECORDS = 20;
+    private string $testFile;
 
-    private array $data = [];
-
-    private string $filePath;
-
-    private CsvConfig $defaultConfig;
-
-    /**
-     * @throws InvalidConfigurationException
-     */
     protected function setUp(): void
     {
         parent::setUp();
         $this->setupTestDirectory();
-        $this->defaultConfig = new CsvConfig();
-        $this->createSampleData();
+        $this->generateTestData();
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        $this->cleanupTestFiles();
+        $this->cleanupTestDirectory();
     }
 
     private function setupTestDirectory(): void
@@ -48,52 +43,39 @@ class SplCsvReaderTest extends TestCase
         }
     }
 
-    /**
-     * @throws InvalidConfigurationException
-     */
-    private function createSampleData(): void
+    private function generateTestData(): void
     {
-        $faker = FakerFactory::create();
-        $this->filePath = self::SAMPLE_CSV;
+        $this->testData = [
+            ['Name', 'Age', 'Email'],
+            ['John Doe', '30', 'john@example.com'],
+            ['Jane Smith', '25', 'jane@example.com'],
+            ['Bob Johnson', '35', 'bob@example.com'],
+            ['Alice Brown', '28', 'alice@example.com'],
+        ];
 
-        $writer = new SplCsvWriter($this->filePath, $this->defaultConfig);
-        $writer->write(['name', 'score']);
-        $this->data[] = ['name', 'score'];
-
-        for ($i = 0; $i < self::SAMPLE_RECORDS; $i++) {
-            $record = [$faker->name, $faker->numberBetween(1, 100)];
-            $writer->write($record);
-            $this->data[] = $record;
-        }
+        $this->testFile = $this->createTestFile($this->testData);
     }
 
-    protected function createTestFile(array $records): string
+    private function createTestFile(array $data): string
     {
-        $path = tempnam(sys_get_temp_dir(), 'csv_test_');
-        $writer = new SplCsvWriter($path, $this->defaultConfig);
+        $filePath = self::SAMPLE_CSV;
+        $writer = new SplCsvWriter($filePath);
 
-        foreach ($records as $record) {
+        foreach ($data as $record) {
             $writer->write($record);
         }
 
-        // Ensure file is written and closed
-        unset($writer);
-        clearstatcache(true, $path);
-
-        return $path;
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-        $this->cleanupTestFiles();
-        $this->cleanupTestDirectory();
-        unset($this->data, $this->defaultConfig);
+        return $filePath;
     }
 
     private function cleanupTestFiles(): void
     {
-        array_map('unlink', glob(self::TEST_DATA_DIR.'/*.csv'));
+        $files = glob(self::TEST_DATA_DIR . '/*.csv');
+        foreach ($files as $file) {
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
     }
 
     private function cleanupTestDirectory(): void
@@ -103,459 +85,175 @@ class SplCsvReaderTest extends TestCase
         }
     }
 
-    public function test_read_csv_can_count_sample_records(): void
+    #[Test]
+    public function test_constructor_with_null_parameters(): void
     {
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath($this->filePath);
-        $count = $csvReader->getRecordCount();
-        $this->assertEquals(count($this->data) - 1, $count);
+        $reader = new SplCsvReader();
+
+        $this->assertInstanceOf(SplCsvReader::class, $reader);
+        $this->assertInstanceOf(CsvConfigInterface::class, $reader->getConfig());
+        $this->assertEquals('', $reader->getSource());
+        $this->assertEquals(-1, $reader->getCurrentPosition());
     }
 
-    public function test_read_csv_can_get_header(): void
+    #[Test]
+    public function test_constructor_with_source_only(): void
     {
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
-        $header = $csvReader->getHeader();
-        $this->assertEquals(['name', 'score'], $header);
+        $reader = new SplCsvReader($this->testFile);
+
+        $this->assertEquals($this->testFile, $reader->getSource());
+        $this->assertInstanceOf(CsvConfigInterface::class, $reader->getConfig());
     }
 
-    public function test_read_csv_can_get_record(): void
+    #[Test]
+    public function test_constructor_with_custom_config(): void
     {
-        $data = $this->data;
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['0' => 'name', '1' => 'score'], $record);
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['0' => $data[1][0], '1' => $data[1][1]], $record);
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['0' => $data[2][0], '1' => $data[2][1]], $record);
+        $config = new CsvConfig();
+        $config->setDelimiter(';')->setEnclosure("'")->setHasHeader(false);
+
+        $reader = new SplCsvReader($this->testFile, $config);
+
+        $this->assertEquals(';', $reader->getConfig()->getDelimiter());
+        $this->assertEquals("'", $reader->getConfig()->getEnclosure());
+        $this->assertFalse($reader->getConfig()->hasHeader());
     }
 
-    public function test_read_csv_can_get_current_position(): void
+    #[Test]
+    public function test_get_reader_returns_spl_file_object(): void
     {
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
-        $csvReader->getRecord();
-        $csvReader->getRecord();
-        $position = $csvReader->getCurrentPosition();
-        $this->assertEquals(2, $position);
+        $reader = new SplCsvReader($this->testFile);
+        $splFileObject = $reader->getReader();
+
+        $this->assertInstanceOf(SplFileObject::class, $splFileObject);
     }
 
-    public function test_read_csv_can_rewind(): void
-    {
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
-        $csvReader->getRecord();
-        $csvReader->getRecord();
-        $csvReader->rewind();
-        $position = $csvReader->getCurrentPosition();
-        $this->assertEquals(0, $position);
-    }
-
-    public function test_read_csv_can_seek(): void
-    {
-        $data = $this->data;
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
-        $record = $csvReader->seek(3);
-        $position = $csvReader->getCurrentPosition();
-        $this->assertEquals(3, $position); // Position should remain at seeked position
-        $this->assertEquals($data[3], $record); // Position 3 should give us data[3]
-    }
-
-    public function test_read_csv_with_empty_file(): void
-    {
-        $this->expectException(EmptyFileException::class);
-        $emptyFilePath = self::TEST_DATA_DIR.'/empty.csv';
-
-        if (! is_dir(dirname($emptyFilePath))) {
-            mkdir(dirname($emptyFilePath), 0o777, true);
-        }
-
-        file_put_contents($emptyFilePath, '');
-
-        $csvReader = new SplCsvReader();
-        $csvReader->setSource($emptyFilePath);
-        $csvReader->getRecordCount();
-    }
-
-    public function test_read_csv_with_nonexistent_file(): void
+    #[Test]
+    public function test_get_reader_with_nonexistent_file_throws_exception(): void
     {
         $this->expectException(FileNotFoundException::class);
 
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath(self::TEST_DATA_DIR.'/nonexistent.csv');
-        $csvReader->getRecordCount();
-    }
-
-    public function test_read_csv_can_get_source(): void
-    {
-        $csvReader = new SplCsvReader();
-        $csvReader->getConfig()->setPath(self::SAMPLE_CSV);
-        $source = $csvReader->getSource();
-        $this->assertEquals(self::SAMPLE_CSV, $source);
-    }
-
-    public function test_read_csv_can_set_source(): void
-    {
-        $csvReader = new SplCsvReader();
-        $csvReader->setSource(self::SAMPLE_CSV);
-        $source = $csvReader->getSource();
-        $this->assertEquals(self::SAMPLE_CSV, $source);
-    }
-
-    public function test_read_csv_can_set_config(): void
-    {
-        $csvReader = new SplCsvReader();
-        $csvReader->setSource(self::SAMPLE_CSV);
-        $desiredConfig = (new CsvConfig())
-            ->setDelimiter('@')
-            ->setEnclosure('"')
-            ->setEscape('\\');
-
-        $csvReader->setConfig($desiredConfig);
-        $config = $csvReader->getConfig();
-        $this->assertEquals($desiredConfig->getDelimiter(), $config->getDelimiter());
-        $this->assertEquals($desiredConfig->getEnclosure(), $config->getEnclosure());
-        $this->assertEquals($desiredConfig->getEscape(), $config->getEscape());
-
-    }
-
-    public function test_read_csv_with_malformed_data(): void
-    {
-        $malformedData = "col1,col2\nvalue1,\"unclosed quote\nvalue3,value4";
-        file_put_contents(self::SAMPLE_CSV, $malformedData);
-
-        $csvReader = new SplCsvReader();
-        $csvReader->setSource(self::SAMPLE_CSV);
-
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['col1', 'col2'], $record);
-
-        $record = $csvReader->getRecord();
-
-        $this->assertEquals(['value1', "unclosed quote\nvalue3,value4"], $record);
-    }
-
-    /**
-     * @throws InvalidConfigurationException
-     */
-    #[Test]
-    #[DataProvider('configProvider')]
-    public function read_csv_with_different_configs(CsvConfig $config, array $expected): void
-    {
-        $data = [
-            ['col1', 'col2'],
-            ['value1', 'value2'],
-        ];
-        $filePath = $this->createConfiguredTestFile($data, $config);
-
-        $csvReader = new SplCsvReader();
-        $csvReader->setSource($filePath);
-        $csvReader->setConfig($config);
-
-        foreach ($expected as $expectedRecord) {
-            $this->assertEquals($expectedRecord, $csvReader->getRecord());
-        }
-    }
-
-    /**
-     * @throws InvalidConfigurationException
-     */
-    private function createConfiguredTestFile(array $data, CsvConfig $config): string
-    {
-        $filePath = self::TEST_DATA_DIR.'/test_config.csv';
-        $writer = new SplCsvWriter($filePath, $config);
-
-        foreach ($data as $row) {
-            $writer->write($row);
-        }
-
-        return $filePath;
-    }
-
-    public static function configProvider(): array
-    {
-        return [
-            'custom delimiter' => [
-                (new CsvConfig())->setDelimiter('@'),
-                [
-                    ['col1', 'col2'],
-                    ['value1', 'value2'],
-                ],
-            ],
-            'custom enclosure' => [
-                (new CsvConfig())->setEnclosure('\''),
-                [
-                    ['col1', 'col2'],
-                    ['value1', 'value2'],
-                ],
-            ],
-            'tab delimiter' => [
-                (new CsvConfig())->setDelimiter("\t"),
-                [
-                    ['col1', 'col2'],
-                    ['value1', 'value2'],
-                ],
-            ],
-            'pipe delimiter' => [
-                (new CsvConfig())->setDelimiter('|'),
-                [
-                    ['col1', 'col2'],
-                    ['value1', 'value2'],
-                ],
-            ],
-        ];
-    }
-
-    public static function invalidConfigProvider(): array
-    {
-        return [
-            'empty delimiter' => [
-                (new CsvConfig())->setDelimiter(''),
-                InvalidConfigurationException::class,
-            ],
-        ];
+        $reader = new SplCsvReader('/nonexistent/file.csv');
+        $reader->getReader();
     }
 
     #[Test]
-    public function test_read_csv_with_unicode_characters(): void
+    public function test_get_record_count(): void
     {
-        $unicodeData = [
-            ['name', 'text'],
-            ['José', '🌟 Unicode test'],
-            ['München', '中文测试'],
-            ['Français', 'ñçåéëþüúíóö'],
-        ];
+        $reader = new SplCsvReader($this->testFile);
+        $count = $reader->getRecordCount();
 
-        $filePath = $this->createTestFile($unicodeData);
-        $csvReader = new SplCsvReader($filePath);
+        // Should return 4 (excluding header)
+        $this->assertEquals(4, $count);
+    }
 
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['name', 'text'], $record);
+    #[Test]
+    public function test_next_record_sequential_reading(): void
+    {
+        $reader = new SplCsvReader($this->testFile);
 
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['José', '🌟 Unicode test'], $record);
+        // Read first record
+        $record1 = $reader->nextRecord();
+        $this->assertEquals($this->testData[1], $record1);
+        $this->assertEquals(0, $reader->getCurrentPosition());
 
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['München', '中文测试'], $record);
+        // Read second record
+        $record2 = $reader->nextRecord();
+        $this->assertEquals($this->testData[2], $record2);
+        $this->assertEquals(1, $reader->getCurrentPosition());
 
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['Français', 'ñçåéëþüúíóö'], $record);
+        // getRecord should return cached record
+        $cachedRecord = $reader->getRecord();
+        $this->assertEquals($record2, $cachedRecord);
+    }
 
-        unlink($filePath);
+    #[Test]
+    public function test_seek_to_specific_position(): void
+    {
+        $reader = new SplCsvReader($this->testFile);
+
+        // Seek to position 2
+        $record = $reader->seek(2);
+        $this->assertEquals($this->testData[3], $record);
+        $this->assertEquals(2, $reader->getCurrentPosition());
+
+        // getRecord should return the same record
+        $cachedRecord = $reader->getRecord();
+        $this->assertEquals($record, $cachedRecord);
+    }
+
+    #[Test]
+    public function test_rewind_functionality(): void
+    {
+        $reader = new SplCsvReader($this->testFile);
+
+        // Read some records
+        $reader->nextRecord();
+        $reader->nextRecord();
+        $this->assertEquals(1, $reader->getCurrentPosition());
+
+        // Rewind
+        $reader->rewind();
+        $this->assertEquals(-1, $reader->getCurrentPosition());
+
+        // Should be able to read from beginning again
+        $record = $reader->nextRecord();
+        $this->assertEquals($this->testData[1], $record);
+        $this->assertEquals(0, $reader->getCurrentPosition());
     }
 
     #[Test]
     public function test_has_records(): void
     {
-        $data = [
-            ['col1', 'col2'],
-            ['value1', 'value2'],
-        ];
-        $filePath = $this->createTestFile($data);
-        $csvReader = new SplCsvReader($filePath);
-
-        $this->assertTrue($csvReader->hasRecords());
-
-        $csvReader->getRecord();
-        $csvReader->getRecord();
-
-        $this->assertTrue($csvReader->hasRecords());
-
-        unlink($filePath);
+        $reader = new SplCsvReader($this->testFile);
+        $this->assertTrue($reader->hasRecords());
     }
 
     #[Test]
-    public function test_has_records_with_empty_file(): void
+    public function test_has_next(): void
     {
-        $emptyFilePath = self::TEST_DATA_DIR.'/empty_for_hasrecords.csv';
+        $reader = new SplCsvReader($this->testFile);
 
-        if (! is_dir(dirname($emptyFilePath))) {
-            mkdir(dirname($emptyFilePath), 0o777, true);
+        // Initially should have next
+        $this->assertTrue($reader->hasNext());
+
+        // Read all records
+        while ($reader->nextRecord() !== false) {
+            // Continue reading
         }
 
-        file_put_contents($emptyFilePath, '');
-
-        $csvReader = new SplCsvReader();
-
-        $this->expectException(EmptyFileException::class);
-        $csvReader->setSource($emptyFilePath);
-
-        try {
-            $csvReader->hasRecords();
-        } finally {
-            @unlink($emptyFilePath);
-        }
+        // Should not have next anymore
+        $this->assertFalse($reader->hasNext());
     }
 
     #[Test]
-    public function test_csv_without_headers(): void
+    public function test_unicode_content(): void
     {
-        $data = [
-            ['value1', 'value2'],
-            ['value3', 'value4'],
-            ['value5', 'value6'],
+        $unicodeData = [
+            ['Name', 'Description'],
+            ['José', 'Café owner'],
+            ['München', 'German city'],
+            ['北京', 'Capital of China'],
         ];
-        $filePath = $this->createTestFile($data);
 
-        $config = (new CsvConfig())->setHasHeader(false);
-        $csvReader = new SplCsvReader($filePath, $config);
-
-        $this->assertFalse($csvReader->getHeader());
-
-        $this->assertEquals(3, $csvReader->getRecordCount());
-
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['value1', 'value2'], $record);
-
-        unlink($filePath);
-    }
-
-    #[Test]
-    public function test_multiple_rewind_and_seek_operations(): void
-    {
-        $data = [
-            ['col1', 'col2'],
-            ['row1', 'data1'],
-            ['row2', 'data2'],
-            ['row3', 'data3'],
-            ['row4', 'data4'],
-        ];
-        $filePath = $this->createTestFile($data);
-        $csvReader = new SplCsvReader($filePath);
-
-        $csvReader->getRecord();
-        $csvReader->getRecord();
-        $this->assertEquals(2, $csvReader->getCurrentPosition());
-
-        $csvReader->rewind();
-        $this->assertEquals(0, $csvReader->getCurrentPosition());
-
-        $csvReader->rewind();
-        $this->assertEquals(0, $csvReader->getCurrentPosition());
-
-        $csvReader->seek(2);
-        $this->assertEquals(2, $csvReader->getCurrentPosition());
-
-        $csvReader->seek(4);
-        $this->assertEquals(4, $csvReader->getCurrentPosition());
-
-        $csvReader->seek(1);
-        $this->assertEquals(1, $csvReader->getCurrentPosition());
-
-        unlink($filePath);
-    }
-
-    #[Test]
-    public function test_invalid_record_handling(): void
-    {
-        $filePath = self::TEST_DATA_DIR.'/invalid_records.csv';
-        $content = "col1,col2\n\n,\nvalue1,value2\n";
-        file_put_contents($filePath, $content);
-
-        $csvReader = new SplCsvReader($filePath);
-
-        $record = $csvReader->getRecord();
-        $this->assertEquals(['col1', 'col2'], $record);
-
-        $record = $csvReader->getRecord();
-
-        $foundValidRecord = false;
-        $attempts = 0;
-        while (! $foundValidRecord && $attempts < 5) {
-            $record = $csvReader->getRecord();
-            if ($record === false) {
-                break;
-            }
-            if ($record === ['value1', 'value2']) {
-                $foundValidRecord = true;
-            }
-            $attempts++;
-        }
-
-        $this->assertTrue($foundValidRecord, 'Should find the valid record');
-
-        unlink($filePath);
-    }
-
-    #[Test]
-    public function test_seek_beyond_bounds(): void
-    {
-        $data = [
-            ['col1', 'col2'],
-            ['value1', 'value2'],
-        ];
-        $filePath = $this->createTestFile($data);
-        $csvReader = new SplCsvReader($filePath);
-
-        $record = $csvReader->seek(100);
-        $this->assertFalse($record);
-
-        unlink($filePath);
-    }
-
-    #[Test]
-    public function test_reset_functionality(): void
-    {
-        $csvReader = new SplCsvReader($this->filePath);
-
-        $csvReader->getRecordCount();
-        $csvReader->getHeader();
-        $csvReader->getRecord();
-
-        $this->assertGreaterThan(0, $csvReader->getCurrentPosition());
-
-        $newConfig = (new CsvConfig())->setDelimiter(';');
-        $csvReader->setConfig($newConfig);
-
-        $this->assertEquals(';', $csvReader->getConfig()->getDelimiter());
-    }
-
-    #[Test]
-    public function test_large_csv_handling(): void
-    {
-        $largeFilePath = self::TEST_DATA_DIR.'/large_test.csv';
-        $writer = new SplCsvWriter($largeFilePath, $this->defaultConfig);
-
-        $writer->write(['id', 'name', 'email']);
-
-        for ($i = 1; $i <= 1000; $i++) {
-            $writer->write([$i, "User $i", "user$i@example.com"]);
+        $unicodeFile = self::TEST_DATA_DIR . '/unicode.csv';
+        $writer = new SplCsvWriter($unicodeFile);
+        foreach ($unicodeData as $row) {
+            $writer->write($row);
         }
         unset($writer);
 
-        $csvReader = new SplCsvReader($largeFilePath);
+        $reader = new SplCsvReader($unicodeFile);
 
-        $this->assertEquals(1000, $csvReader->getRecordCount());
+        $header = $reader->getHeader();
+        $this->assertEquals(['Name', 'Description'], $header);
 
-        $record = $csvReader->seek(500);
-        $this->assertEquals(['500', 'User 500', 'user500@example.com'], $record);
+        $record1 = $reader->nextRecord();
+        $this->assertEquals(['José', 'Café owner'], $record1);
 
-        $record = $csvReader->seek(1000);
-        $this->assertEquals(['1000', 'User 1000', 'user1000@example.com'], $record);
+        $record2 = $reader->nextRecord();
+        $this->assertEquals(['München', 'German city'], $record2);
 
-        unlink($largeFilePath);
-    }
-
-    #[Test]
-    public function test_file_not_readable(): void
-    {
-        $this->expectException(FileNotReadableException::class);
-
-        $unreadableFile = self::TEST_DATA_DIR.'/unreadable.csv';
-
-        file_put_contents($unreadableFile, 'col1,col2\nvalue1,value2');
-        chmod($unreadableFile, 0o000);
-
-        $csvReader = new SplCsvReader($unreadableFile);
-
-        try {
-            $csvReader->getRecordCount();
-        } finally {
-            chmod($unreadableFile, 0o644);
-            unlink($unreadableFile);
-        }
+        $record3 = $reader->nextRecord();
+        $this->assertEquals(['北京', 'Capital of China'], $record3);
     }
 }

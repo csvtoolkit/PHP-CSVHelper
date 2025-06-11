@@ -17,12 +17,21 @@ use SplFileObject;
  * CSV Reader implementation using FastCSV extension
  *
  * This class provides high-performance functionality to read CSV files using the FastCSV C extension.
- * It supports custom delimiters, enclosures, and escape characters with native C performance.
+ * It supports custom delimiters, enclosures, and escape characters
  */
 class CsvReader extends AbstractCsvReader
 {
+    /**
+     * FastCSV configuration object.
+     */
     private ?FastCSVConfig $fastCsvConfig = null;
 
+    /**
+     * Creates a new FastCSV-based CSV reader instance.
+     *
+     * @param string|null $source Optional file path to CSV file
+     * @param CsvConfigInterface|null $config Optional configuration object
+     */
     public function __construct(
         ?string $source = null,
         ?CsvConfigInterface $config = null
@@ -35,10 +44,13 @@ class CsvReader extends AbstractCsvReader
     }
 
     /**
-     * @throws FileNotFoundException
-     * @throws FileNotReadableException
-     * @throws EmptyFileException
-     * @throws CsvReaderException
+     * Gets the underlying FastCSVReader instance.
+     *
+     * @return FastCSVReader|SplFileObject|null The FastCSVReader instance
+     * @throws FileNotFoundException If the CSV file doesn't exist
+     * @throws FileNotReadableException If the file cannot be read
+     * @throws EmptyFileException If the file is empty
+     * @throws CsvReaderException If FastCSV reader creation fails
      */
     public function getReader(): null|SplFileObject|FastCSVReader
     {
@@ -50,50 +62,79 @@ class CsvReader extends AbstractCsvReader
     }
 
     /**
-     * @throws FileNotFoundException
-     * @throws FileNotReadableException
-     * @throws EmptyFileException
-     * @throws CsvReaderException
+     * Initializes the FastCSVReader with current configuration.
+     *
+     * @throws FileNotFoundException If the CSV file doesn't exist
+     * @throws FileNotReadableException If the file cannot be read
+     * @throws EmptyFileException If the file is empty
+     * @throws CsvReaderException If FastCSV reader creation fails
      */
     public function setReader(): void
     {
-        $filePath = $this->getConfig()->getPath();
-        if (! file_exists($filePath)) {
-            throw new FileNotFoundException($filePath);
-        }
-        if (! is_readable($filePath)) {
-            throw new FileNotReadableException($filePath);
+        if (! $this->config instanceof \Phpcsv\CsvHelper\Contracts\CsvConfigInterface) {
+            throw new Exception("Configuration is required");
         }
 
         $this->fastCsvConfig = new FastCSVConfig();
         $this->fastCsvConfig
-            ->setPath($filePath)
+            ->setPath($this->config->getPath())
             ->setDelimiter($this->config->getDelimiter())
             ->setEnclosure($this->config->getEnclosure())
             ->setEscape($this->config->getEscape())
             ->setHasHeader($this->config->hasHeader())
             ->setOffset($this->config->getOffset());
 
+        // Check if file is empty before creating reader
+        $filePath = $this->config->getPath();
+        if (file_exists($filePath) && filesize($filePath) === 0) {
+            throw new EmptyFileException("File is empty: " . $filePath);
+        }
+
         try {
             $this->reader = new FastCSVReader($this->fastCsvConfig);
         } catch (Exception $e) {
-            throw new CsvReaderException("Failed to initialize FastCSV reader: " . $e->getMessage());
+            $message = $e->getMessage();
+
+            // Check for specific error types to throw appropriate exceptions
+            if (str_contains($message, 'No such file or directory') ||
+                str_contains($message, 'Failed to open CSV file')) {
+                throw new FileNotFoundException("File not found: " . $this->config->getPath(), 0, $e);
+            }
+
+            if (str_contains($message, 'Permission denied')) {
+                throw new FileNotReadableException("File not readable: " . $this->config->getPath());
+            }
+
+            if (str_contains($message, 'empty') || str_contains($message, 'no records')) {
+                throw new EmptyFileException("File is empty: " . $this->config->getPath());
+            }
+
+            throw new CsvReaderException("Failed to create FastCSV reader: " . $message, $e->getCode(), $e);
         }
 
-        if ($this->reader->getRecordCount() === 0 && ! $this->config->hasHeader()) {
-            throw new EmptyFileException($filePath);
+        if ($this->config->hasHeader()) {
+            $this->cacheHeaders();
         }
-
-        $this->recordCount = null;
-        $this->header = null;
     }
 
+    /**
+     * Gets the current CSV configuration.
+     *
+     * @return CsvConfigInterface The configuration object
+     * @throws Exception If configuration is not set
+     */
     public function getConfig(): CsvConfigInterface
     {
+        if (! $this->config instanceof \Phpcsv\CsvHelper\Contracts\CsvConfigInterface) {
+            throw new Exception("Configuration not set");
+        }
+
         return $this->config;
     }
 
     /**
+     * Gets the total number of data records in the CSV file.
+     *
      * @return int|null Total number of records, excluding header if configured
      */
     public function getRecordCount(): ?int
@@ -110,45 +151,93 @@ class CsvReader extends AbstractCsvReader
         return $this->recordCount;
     }
 
+    /**
+     * Rewinds the reader to the beginning of the data records.
+     *
+     * Resets position to -1 (no record read state) and clears cached data.
+     */
     public function rewind(): void
     {
         if (! $this->reader instanceof FastCSVReader) {
             return;
         }
+
         $this->reader->rewind();
-    }
+        parent::rewind();  // This will reset position and clear cache
 
-    public function getCurrentPosition(): int
-    {
-        if ($this->reader instanceof FastCSVReader) {
-            return $this->reader->getPosition();
+        // Cache headers if needed
+        if ($this->getConfig()->hasHeader() && $this->header === null) {
+            $this->cacheHeaders();
         }
-
-        return 0;
     }
 
     /**
-     * @return array|false Array containing CSV fields or false on EOF/error
+     * Gets the current 0-based record position.
+     *
+     * @return int Current position (-1 if no record has been read, 0+ for actual positions)
+     */
+    public function getCurrentPosition(): int
+    {
+        return $this->position;
+    }
+
+    /**
+     * Gets the record at the current position without advancing.
+     *
+     * @return array|false Array of field values, or false if no record has been read
      */
     public function getRecord(): array|false
+    {
+        if ($this->position === -1) {
+            return false;  // No record has been read yet
+        }
+
+        // Return cached record if available
+        if ($this->cachedRecord !== null) {
+            return $this->cachedRecord;
+        }
+
+        // If not cached, seek to current position to get the record
+        return $this->seek($this->position);
+    }
+
+    /**
+     * Reads the next record sequentially.
+     *
+     * @return array|false Array of field values, or false if end of file
+     */
+    public function nextRecord(): array|false
     {
         /** @var FastCSVReader $reader */
         $reader = $this->getReader();
 
-
-        $record = $reader->nextRecord();
-        if ($record === false) {
-            return false;
-        }
-        if ($this->isInvalidRecord($record)) {
+        // Calculate next file position
+        $nextPosition = $this->position + 1;
+        if ($nextPosition >= $this->getRecordCount()) {
             return false;
         }
 
-        return $record;
+        try {
+            $record = $reader->nextRecord();
+
+            if ($record === false || $record === null) {
+                return false;
+            }
+
+            // Update position only after successful read
+            $this->position = $nextPosition;
+            $this->cachedRecord = $record;  // Cache the record
+
+            return $record;
+        } catch (Exception) {
+            return false;
+        }
     }
 
     /**
-     * @return array|false Header row or false if headers disabled/error
+     * Gets the header row if headers are enabled.
+     *
+     * @return array|false Array of header field names, or false if headers disabled
      */
     public function getHeader(): array|false
     {
@@ -172,31 +261,41 @@ class CsvReader extends AbstractCsvReader
     }
 
     /**
-     * @param  int  $position  Zero-based record position
-     * @return array|false Record at position or false on error
+     * Seeks to a specific 0-based record position.
+     *
+     * @param int $position Zero-based position to seek to
+     * @return array|false Array of field values at the position, or false if invalid position
      */
     public function seek(int $position): array|false
     {
+        if ($position < 0 || $position >= $this->getRecordCount()) {
+            return false;
+        }
+
         /** @var FastCSVReader $reader */
         $reader = $this->getReader();
 
-        if (! $reader->seek($position)) {
-            return false;
-        }
+        try {
+            // FastCSV seek now returns the record data directly
+            $record = $reader->seek($position);
 
-        $record = $reader->nextRecord();
-        if ($record === false) {
-            return false;
-        }
-        if ($this->isInvalidRecord($record)) {
-            return false;
-        }
+            if ($record === false || $record === null) {
+                return false;
+            }
 
-        return $record;
+            $this->position = $position;
+            $this->cachedRecord = $record;  // Cache the record
+
+            return $record;
+        } catch (Exception) {
+            return false;
+        }
     }
 
     /**
-     * @return bool True if file contains any records
+     * Checks if the CSV file contains any data records.
+     *
+     * @return bool True if file contains records, false otherwise
      */
     public function hasRecords(): bool
     {
@@ -215,7 +314,9 @@ class CsvReader extends AbstractCsvReader
     }
 
     /**
-     * @return bool True if more records exist from current position (EOF check)
+     * Checks if more records exist from the current position.
+     *
+     * @return bool True if more records available, false if at end
      */
     public function hasNext(): bool
     {
@@ -226,11 +327,13 @@ class CsvReader extends AbstractCsvReader
     }
 
     /**
-     * @param  string  $source  File path
+     * Sets the CSV file path and resets the reader.
+     *
+     * @param string $source Path to the CSV file
      */
     public function setSource(string $source): void
     {
-        $this->config->setPath($source);
+        $this->getConfig()->setPath($source);
 
         $this->reader = null;
         $this->fastCsvConfig = null;
@@ -238,11 +341,21 @@ class CsvReader extends AbstractCsvReader
         $this->header = null;
     }
 
+    /**
+     * Gets the current CSV file path.
+     *
+     * @return string File path string
+     */
     public function getSource(): string
     {
-        return $this->config->getPath();
+        return $this->getConfig()->getPath();
     }
 
+    /**
+     * Updates the CSV configuration.
+     *
+     * @param CsvConfigInterface $config New configuration
+     */
     public function setConfig(CsvConfigInterface $config): void
     {
         $this->config = $config;
@@ -269,16 +382,8 @@ class CsvReader extends AbstractCsvReader
     }
 
     /**
-     * Check if the record is considered invalid
-     *
-     * @param  array  $record  The record to validate
-     * @return bool True if record is invalid
+     * Destructor to clean up FastCSV resources.
      */
-    private function isInvalidRecord(array $record): bool
-    {
-        return count($record) === 1 && ($record[0] === null || $record[0] === '');
-    }
-
     public function __destruct()
     {
         if ($this->reader instanceof FastCSVReader) {
@@ -286,11 +391,29 @@ class CsvReader extends AbstractCsvReader
         }
     }
 
+    /**
+     * Resets the reader state.
+     *
+     * Clears all cached data and resets position tracking.
+     */
     public function reset(): void
     {
         $this->reader = null;
         $this->fastCsvConfig = null;
         $this->recordCount = null;
         $this->header = null;
+    }
+
+    /**
+     * Cache headers from the CSV file.
+     *
+     * Retrieves and stores header data for subsequent access.
+     */
+    private function cacheHeaders(): void
+    {
+        $headers = $this->getHeader();
+        if ($headers !== false) {
+            $this->header = $headers;
+        }
     }
 }

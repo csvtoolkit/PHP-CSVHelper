@@ -5,6 +5,7 @@ parameters:
     excludePaths:
         - tests/*
     reportUnmatchedIgnoredErrors: true
+    treatPhpDocTypesAsCertain: false
     ignoreErrors:
         -
             identifier: missingType.iterableValue

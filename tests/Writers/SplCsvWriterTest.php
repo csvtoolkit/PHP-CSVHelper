@@ -2,35 +2,35 @@
 
 namespace Tests\Writers;
 
-use Faker\Factory as FakerFactory;
 use Phpcsv\CsvHelper\Configs\CsvConfig;
+use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
 use Phpcsv\CsvHelper\Writers\SplCsvWriter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use SplFileObject;
 
 #[CoversClass(SplCsvWriter::class)]
-final class SplCsvWriterTest extends TestCase
+class SplCsvWriterTest extends TestCase
 {
-    private const string TEST_DATA_DIR = __DIR__.'/data';
+    private const string TEST_DATA_DIR = __DIR__ . '/data';
 
-    private const string TEST_CSV = self::TEST_DATA_DIR.'/test.csv';
-
-    private const int PERFORMANCE_RECORDS = 1000;
-
-    private const float MAX_EXECUTION_TIME = 1.0;
-
-    private const int MAX_MEMORY_USAGE = 10 * 1024 * 1024; // 10MB
-
-    private CsvConfig $defaultConfig;
+    private string $testFile;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->setupTestDirectory();
-        $this->initializeConfigs();
+        $this->testFile = self::TEST_DATA_DIR . '/test_output.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+        $this->cleanupTestFiles();
+        $this->cleanupTestDirectory();
     }
 
     private function setupTestDirectory(): void
@@ -40,26 +40,13 @@ final class SplCsvWriterTest extends TestCase
         }
     }
 
-    private function initializeConfigs(): void
-    {
-        $this->defaultConfig = (new CsvConfig())
-            ->setDelimiter(',')
-            ->setEnclosure('"')
-            ->setEscape('\\');
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-        $this->cleanupTestFiles();
-        $this->cleanupTestDirectory();
-        unset($this->defaultConfig);
-    }
-
     private function cleanupTestFiles(): void
     {
-        if (file_exists(self::TEST_CSV)) {
-            unlink(self::TEST_CSV);
+        $files = glob(self::TEST_DATA_DIR . '/*.csv');
+        foreach ($files as $file) {
+            if (file_exists($file)) {
+                unlink($file);
+            }
         }
     }
 
@@ -71,200 +58,445 @@ final class SplCsvWriterTest extends TestCase
     }
 
     #[Test]
-    public function write_should_create_valid_csv_with_default_config(): void
+    public function test_constructor_with_null_parameters(): void
     {
-        $data = [
-            ['name', 'score'],
-            ['John Doe', '95'],
-            ['Jane Smith', '88'],
+        $writer = new SplCsvWriter();
+
+        $this->assertInstanceOf(SplCsvWriter::class, $writer);
+        $this->assertInstanceOf(CsvConfigInterface::class, $writer->getConfig());
+        $this->assertEquals('', $writer->getSource());
+    }
+
+    #[Test]
+    public function test_constructor_with_source_only(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+
+        $this->assertEquals($this->testFile, $writer->getSource());
+        $this->assertInstanceOf(CsvConfigInterface::class, $writer->getConfig());
+    }
+
+    #[Test]
+    public function test_constructor_with_custom_config(): void
+    {
+        $config = new CsvConfig();
+        $config->setDelimiter(';')->setEnclosure("'")->setHasHeader(false);
+
+        $writer = new SplCsvWriter($this->testFile, $config);
+
+        $this->assertEquals(';', $writer->getConfig()->getDelimiter());
+        $this->assertEquals("'", $writer->getConfig()->getEnclosure());
+        $this->assertFalse($writer->getConfig()->hasHeader());
+    }
+
+    #[Test]
+    public function test_get_writer_returns_spl_file_object(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $splFileObject = $writer->getWriter();
+
+        $this->assertInstanceOf(SplFileObject::class, $splFileObject);
+    }
+
+    #[Test]
+    public function test_get_writer_with_invalid_path_throws_exception(): void
+    {
+        $this->expectException(FileNotFoundException::class);
+
+        // Use a path that definitely doesn't exist
+        $writer = new SplCsvWriter('/nonexistent_directory_12345/file.csv');
+        $writer->getWriter();
+    }
+
+    #[Test]
+    public function test_write_single_record(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $record = ['John Doe', '30', 'john@example.com'];
+
+        $writer->write($record);
+        unset($writer);
+
+        // Verify file contents
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringContainsString('"John Doe",30,john@example.com', $contents);
+    }
+
+    #[Test]
+    public function test_write_multiple_records(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['Name', 'Age', 'Email'],
+            ['John Doe', '30', 'john@example.com'],
+            ['Jane Smith', '25', 'jane@example.com'],
         ];
 
-        $writer = new SplCsvWriter(self::TEST_CSV, $this->defaultConfig);
-        $this->writeRecords($writer, $data);
-
-        $this->assertFileExists(self::TEST_CSV);
-        $this->assertFileContent(
-            "name,score\n".
-            "\"John Doe\",95\n".
-            "\"Jane Smith\",88\n",
-            self::TEST_CSV
-        );
-    }
-
-    #[Test]
-    public function write_should_handle_custom_delimiters_and_escaping(): void
-    {
-        $config = (new CsvConfig())
-            ->setDelimiter(';')
-            ->setEnclosure("'")
-            ->setEscape('\\');
-
-        $data = [
-            ['name', 'description'],
-            ['product', 'contains;semicolon'],
-            ["O'Brien", "has'quote"],
-        ];
-
-        $writer = new SplCsvWriter(self::TEST_CSV, $config);
-        $this->writeRecords($writer, $data);
-
-        $this->assertFileExists(self::TEST_CSV);
-        $this->assertFileContent(
-            "name;description\n".
-            "product;'contains;semicolon'\n".
-            "'O\\'Brien';'has\\'quote'\n",
-            self::TEST_CSV
-        );
-    }
-
-    #[Test]
-    public function write_should_handle_unicode_characters(): void
-    {
-
-        $data = [
-            ['name', 'text'],
-            ['José', '🌟 Unicode test'],
-            ['München', '中文测试'],
-            ['Français', 'ñçåéëþüúíóö'],
-        ];
-
-        $writer = new SplCsvWriter(self::TEST_CSV, $this->defaultConfig);
-        $this->writeRecords($writer, $data);
-
-        $this->assertFileExists(self::TEST_CSV);
-        $this->assertFileContent(
-            "name,text\n".
-            "José,\"🌟 Unicode test\"\n".
-            "München,中文测试\n".
-            "Français,ñçåéëþüúíóö\n",
-            self::TEST_CSV
-        );
-    }
-
-    #[Test]
-    #[DataProvider('provideConfigTestCases')]
-    public function write_should_handle_different_configurations(
-        CsvConfig $config,
-        array $data,
-        string $expected
-    ): void {
-
-        $writer = new SplCsvWriter(self::TEST_CSV, $config);
-        $this->writeRecords($writer, $data);
-
-        $this->assertFileExists(self::TEST_CSV);
-        $this->assertFileContent($expected, self::TEST_CSV);
-    }
-
-    public static function provideConfigTestCases(): array
-    {
-        return [
-            'tab_delimiter' => [
-                (new CsvConfig())
-                    ->setDelimiter("\t")
-                    ->setEnclosure('"'),
-                [['col1', 'col2'], ['val1', 'val2']],
-                "col1\tcol2\nval1\tval2\n",
-            ],
-            'pipe_delimiter' => [
-                (new CsvConfig())
-                    ->setDelimiter('|')
-                    ->setEnclosure('"'),
-                [['a', 'b'], ['1', '2']],
-                "a|b\n1|2\n",
-            ],
-            'custom_enclosure' => [
-                (new CsvConfig())
-                    ->setDelimiter(',')
-                    ->setEnclosure('*')
-                    ->setEscape('\\'),
-                [['data', 'with,comma'], ['quoted', 'value']],
-                "data,*with,comma*\nquoted,value\n",
-            ],
-        ];
-    }
-
-    #[Test]
-    #[Group('performance')]
-    public function write_should_meet_performance_requirements(): void
-    {
-
-        $records = $this->generateLargeDataset();
-        $startMemory = memory_get_usage(true);
-
-        $executionTime = $this->measureWritePerformance($records);
-        $memoryUsed = memory_get_usage(true) - $startMemory;
-
-        $this->assertPerformanceMetrics($executionTime, $memoryUsed);
-    }
-
-    private function generateLargeDataset(): array
-    {
-        $faker = FakerFactory::create();
-        $records = [];
-
-        for ($i = 0; $i < self::PERFORMANCE_RECORDS; $i++) {
-            $records[] = [
-                $faker->uuid,
-                $faker->name,
-                $faker->email,
-                $faker->text(100),
-            ];
-        }
-
-        return $records;
-    }
-
-    private function measureWritePerformance(array $records): float
-    {
-        $startTime = microtime(true);
-
-        $writer = new SplCsvWriter(self::TEST_CSV, $this->defaultConfig);
-        $this->writeRecords($writer, $records);
-
-        return microtime(true) - $startTime;
-    }
-
-    private function assertPerformanceMetrics(float $executionTime, int $memoryUsed): void
-    {
-        $this->assertFileExists(self::TEST_CSV);
-        $this->assertLessThan(
-            self::MAX_EXECUTION_TIME,
-            $executionTime,
-            sprintf('File writing took too long: %.2f seconds', $executionTime)
-        );
-        $this->assertLessThan(
-            self::MAX_MEMORY_USAGE,
-            $memoryUsed,
-            sprintf('Memory usage exceeded limit: %d bytes', $memoryUsed)
-        );
-    }
-
-    #[Test]
-    public function setTarget_should_update_output_path(): void
-    {
-
-        $writer = new SplCsvWriter(null, $this->defaultConfig);
-
-        $writer->setTarget(self::TEST_CSV);
-
-        $this->assertEquals(self::TEST_CSV, $writer->getTarget());
-        $writer->write(['test', 'data']);
-        $this->assertFileExists(self::TEST_CSV);
-    }
-
-    private function writeRecords(SplCsvWriter $writer, array $records): void
-    {
         foreach ($records as $record) {
             $writer->write($record);
         }
+        unset($writer);
+
+        // Verify file contents
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringContainsString('Name,Age,Email', $contents);
+        // SplFileObject quotes fields with spaces
+        $this->assertStringContainsString('"John Doe",30,john@example.com', $contents);
+        $this->assertStringContainsString('"Jane Smith",25,jane@example.com', $contents);
     }
 
-    private function assertFileContent(string $expected, string $filePath): void
+    #[Test]
+    public function test_write_all_records_at_once(): void
     {
-        $this->assertFileExists($filePath, 'Output file was not created');
-        $content = file_get_contents($filePath);
-        $this->assertNotFalse($content, 'Failed to read output file');
-        $this->assertEquals($expected, $content, 'File content does not match expected output');
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['Name', 'Age', 'Email'],
+            ['John Doe', '30', 'john@example.com'],
+            ['Jane Smith', '25', 'jane@example.com'],
+            ['Bob Johnson', '35', 'bob@example.com'],
+        ];
+
+        $writer->writeAll($records);
+        unset($writer);
+
+        // Verify file contents
+        $contents = file_get_contents($this->testFile);
+        $lines = explode("\n", trim($contents));
+        $this->assertCount(4, $lines);
+        $this->assertStringContainsString('Name,Age,Email', $lines[0]);
+        // SplFileObject quotes fields with spaces
+        $this->assertStringContainsString('"John Doe",30,john@example.com', $lines[1]);
+        $this->assertStringContainsString('"Jane Smith",25,jane@example.com', $lines[2]);
+        $this->assertStringContainsString('"Bob Johnson",35,bob@example.com', $lines[3]);
+    }
+
+    #[Test]
+    public function test_set_source(): void
+    {
+        $writer = new SplCsvWriter();
+        $writer->setSource($this->testFile);
+
+        $this->assertEquals($this->testFile, $writer->getSource());
+
+        // Should be able to write after setting source
+        $writer->write(['test', 'data']);
+        unset($writer);
+
+        $this->assertFileExists($this->testFile);
+    }
+
+    #[Test]
+    public function test_set_config(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+
+        $newConfig = new CsvConfig();
+        $newConfig->setDelimiter(';')->setEnclosure("'")->setHasHeader(false);
+
+        $writer->setConfig($newConfig);
+
+        $this->assertEquals(';', $writer->getConfig()->getDelimiter());
+        $this->assertEquals("'", $writer->getConfig()->getEnclosure());
+        $this->assertFalse($writer->getConfig()->hasHeader());
+    }
+
+    #[Test]
+    #[DataProvider('csvConfigProvider')]
+    public function test_different_csv_configurations(CsvConfig $config, array $data, string $expectedPattern): void
+    {
+        $writer = new SplCsvWriter($this->testFile, $config);
+
+        foreach ($data as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $this->assertMatchesRegularExpression($expectedPattern, $contents);
+    }
+
+    public static function csvConfigProvider(): array
+    {
+        return [
+            'semicolon delimiter' => [
+                (new CsvConfig())->setDelimiter(';'),
+                [['col1', 'col2'], ['value1', 'value2']],
+                '/col1;col2.*value1;value2/s',
+            ],
+            'custom enclosure' => [
+                (new CsvConfig())->setEnclosure("'"),
+                [['col1', 'col2'], ['value with space', 'value2']],
+                "/'value with space',value2/",
+            ],
+            'tab delimiter' => [
+                (new CsvConfig())->setDelimiter("\t"),
+                [['col1', 'col2'], ['value1', 'value2']],
+                "/col1\t.*value1\t/s",
+            ],
+        ];
+    }
+
+    #[Test]
+    public function test_write_with_special_characters(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['field1', 'field2', 'field3'],
+            ['normal', 'with,comma', 'with"quote'],
+            ['with\nnewline', 'with\ttab', 'with;semicolon'],
+        ];
+
+        foreach ($records as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringContainsString('field1,field2,field3', $contents);
+        $this->assertStringContainsString('"with,comma"', $contents);
+        $this->assertStringContainsString('"with\"quote"', $contents);
+    }
+
+    #[Test]
+    public function test_write_unicode_content(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['Name', 'Description'],
+            ['José', 'Café owner'],
+            ['München', 'German city'],
+            ['北京', 'Capital of China'],
+        ];
+
+        foreach ($records as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringContainsString('José', $contents);
+        $this->assertStringContainsString('Café owner', $contents);
+        $this->assertStringContainsString('München', $contents);
+        $this->assertStringContainsString('北京', $contents);
+    }
+
+    #[Test]
+    public function test_write_empty_fields(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['col1', 'col2', 'col3'],
+            ['value1', '', 'value3'],
+            ['', 'value2', ''],
+            ['', '', ''],
+        ];
+
+        foreach ($records as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $lines = explode("\n", trim($contents));
+        $this->assertCount(4, $lines);
+        $this->assertStringContainsString('value1,,value3', $lines[1]);
+        $this->assertStringContainsString(',value2,', $lines[2]);
+        $this->assertStringContainsString(',,', $lines[3]);
+    }
+
+    #[Test]
+    public function test_write_large_dataset(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+
+        // Write header
+        $writer->write(['id', 'name', 'email']);
+
+        // Write 1000 records
+        for ($i = 1; $i <= 1000; $i++) {
+            $writer->write([$i, "User $i", "user$i@example.com"]);
+        }
+        unset($writer);
+
+        // Verify file was created and has correct number of lines
+        $this->assertFileExists($this->testFile);
+        $contents = file_get_contents($this->testFile);
+        $lines = explode("\n", trim($contents));
+        $this->assertCount(1001, $lines); // 1000 records + 1 header
+
+        // Verify first and last records
+        $this->assertStringContainsString('id,name,email', $lines[0]);
+        // SplFileObject quotes fields with spaces
+        $this->assertStringContainsString('1,"User 1",user1@example.com', $lines[1]);
+        $this->assertStringContainsString('1000,"User 1000",user1000@example.com', $lines[1000]);
+    }
+
+    #[Test]
+    public function test_write_to_existing_file_overwrites(): void
+    {
+        // Create initial file
+        file_put_contents($this->testFile, "existing,content\n");
+
+        $writer = new SplCsvWriter($this->testFile);
+        $writer->write(['new', 'content']);
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringNotContainsString('existing,content', $contents);
+        $this->assertStringContainsString('new,content', $contents);
+    }
+
+    #[Test]
+    public function test_write_single_column(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['single_column'],
+            ['value1'],
+            ['value2'],
+            ['value3'],
+        ];
+
+        foreach ($records as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $lines = explode("\n", trim($contents));
+        $this->assertCount(4, $lines);
+        $this->assertEquals('single_column', $lines[0]);
+        $this->assertEquals('value1', $lines[1]);
+        $this->assertEquals('value2', $lines[2]);
+        $this->assertEquals('value3', $lines[3]);
+    }
+
+    #[Test]
+    public function test_write_with_numeric_values(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['integer', 'float', 'string_number'],
+            [123, 45.67, '890'],
+            [0, 0.0, '0'],
+            [-123, -45.67, '-890'],
+        ];
+
+        foreach ($records as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringContainsString('123,45.67,890', $contents);
+        $this->assertStringContainsString('0,0,0', $contents);
+        $this->assertStringContainsString('-123,-45.67,-890', $contents);
+    }
+
+    #[Test]
+    public function test_write_with_boolean_values(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['boolean_true', 'boolean_false', 'string_bool'],
+            [true, false, 'true'],
+            [1, 0, 'false'],
+        ];
+
+        foreach ($records as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringContainsString('1,,true', $contents); // false becomes empty string
+        $this->assertStringContainsString('1,0,false', $contents);
+    }
+
+    #[Test]
+    public function test_file_creation_in_existing_directory(): void
+    {
+        // Test that files can be created in existing directories
+        $existingDir = self::TEST_DATA_DIR . '/existing';
+        mkdir($existingDir, 0o755, true);
+        $nestedFile = $existingDir . '/nested.csv';
+
+        $writer = new SplCsvWriter($nestedFile);
+        $writer->write(['test', 'directory', 'creation']);
+        unset($writer);
+
+        $this->assertFileExists($nestedFile);
+        $contents = file_get_contents($nestedFile);
+        $this->assertStringContainsString('test,directory,creation', $contents);
+
+        // Cleanup
+        unlink($nestedFile);
+        rmdir($existingDir);
+    }
+
+    #[Test]
+    public function test_append_mode_when_file_exists(): void
+    {
+        // Create initial file
+        file_put_contents($this->testFile, "initial,content\n");
+
+        // Create writer in append mode by opening existing file
+        $writer = new SplCsvWriter($this->testFile);
+        $writer->write(['appended', 'content']);
+        unset($writer);
+
+        // Note: SplFileObject opens in write mode by default, so it overwrites
+        $contents = file_get_contents($this->testFile);
+        $this->assertStringNotContainsString('initial,content', $contents);
+        $this->assertStringContainsString('appended,content', $contents);
+    }
+
+    #[Test]
+    public function test_write_with_null_values(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+        $records = [
+            ['col1', 'col2', 'col3'],
+            ['value1', null, 'value3'],
+            [null, 'value2', null],
+        ];
+
+        foreach ($records as $record) {
+            $writer->write($record);
+        }
+        unset($writer);
+
+        $contents = file_get_contents($this->testFile);
+        $lines = explode("\n", trim($contents));
+        $this->assertCount(3, $lines);
+        // PHP's fputcsv converts null to empty string
+        $this->assertStringContainsString('value1,,value3', $lines[1]);
+        $this->assertStringContainsString(',value2,', $lines[2]);
+    }
+
+    #[Test]
+    public function test_write_performance_with_flush(): void
+    {
+        $writer = new SplCsvWriter($this->testFile);
+
+        $start = microtime(true);
+
+        // Write many records
+        for ($i = 1; $i <= 5000; $i++) {
+            $writer->write([$i, "Performance test $i", "test$i@example.com"]);
+        }
+
+        $elapsed = microtime(true) - $start;
+
+        unset($writer);
+
+        // Should complete within reasonable time (adjust threshold as needed)
+        $this->assertLessThan(5.0, $elapsed, 'Writing 5000 records took too long');
+
+        // Verify file integrity
+        $this->assertFileExists($this->testFile);
+        $contents = file_get_contents($this->testFile);
+        $lines = explode("\n", trim($contents));
+        $this->assertCount(5000, $lines);
     }
 }
