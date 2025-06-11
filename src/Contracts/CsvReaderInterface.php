@@ -2,11 +2,12 @@
 
 namespace Phpcsv\CsvHelper\Contracts;
 
+use FastCSVReader;
 use SplFileObject;
 
 interface CsvReaderInterface
 {
-    public function getReader(): ?SplFileObject;
+    public function getReader(): SplFileObject|FastCSVReader|null;
 
     public function getConfig(): CsvConfigInterface;
 

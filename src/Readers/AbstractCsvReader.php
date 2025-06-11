@@ -2,6 +2,7 @@
 
 namespace Phpcsv\CsvHelper\Readers;
 
+use FastCSVReader;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
 use Phpcsv\CsvHelper\Contracts\CsvReaderInterface;
 use SplFileObject;
@@ -14,7 +15,7 @@ abstract class AbstractCsvReader implements CsvReaderInterface
 
     protected ?array $header = null;
 
-    protected ?SplFileObject $reader = null;
+    protected SplFileObject|FastCSVReader|null $reader = null;
 
     protected ?int $recordCount = null;
 
@@ -23,7 +24,7 @@ abstract class AbstractCsvReader implements CsvReaderInterface
         ?CsvConfigInterface $config = null
     );
 
-    abstract public function getReader(): ?SplFileObject;
+    abstract public function getReader(): SplFileObject|FastCSVReader|null;
 
     abstract public function getConfig(): CsvConfigInterface;
 
