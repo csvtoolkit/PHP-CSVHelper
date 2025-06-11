@@ -6,6 +6,7 @@ use Faker\Factory as FakerFactory;
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Exceptions\EmptyFileException;
 use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
+use Phpcsv\CsvHelper\Exceptions\FileNotReadableException;
 use Phpcsv\CsvHelper\Exceptions\InvalidConfigurationException;
 use Phpcsv\CsvHelper\Readers\SplCsvReader;
 use Phpcsv\CsvHelper\Writers\SplCsvWriter;
@@ -379,12 +380,9 @@ class SplCsvReaderTest extends TestCase
 
         $csvReader = new SplCsvReader();
 
-        try {
-            $csvReader->setSource($emptyFilePath);
-            $this->assertFalse($csvReader->hasRecords());
-        } catch (EmptyFileException) {
-            $this->assertTrue(true);
-        }
+        $this->expectException(EmptyFileException::class);
+        $csvReader->setSource($emptyFilePath);
+        $csvReader->hasRecords();
 
         unlink($emptyFilePath);
     }
@@ -541,7 +539,7 @@ class SplCsvReaderTest extends TestCase
     #[Test]
     public function test_file_not_readable(): void
     {
-        $this->expectException(FileNotFoundException::class);
+        $this->expectException(FileNotReadableException::class);
 
         $unreadableFile = self::TEST_DATA_DIR.'/unreadable.csv';
 

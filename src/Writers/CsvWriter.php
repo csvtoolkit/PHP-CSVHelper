@@ -49,7 +49,7 @@ class CsvWriter extends AbstractCsvWriter
     {
         $filePath = $this->getConfig()->getPath();
 
-        if ($filePath === '' || $filePath === '0') {
+        if (in_array(trim($filePath), ['', '0'], true)) {
             throw new CsvWriterException('Target file path is required');
         }
 
@@ -173,14 +173,6 @@ class CsvWriter extends AbstractCsvWriter
     public function setConfig(CsvConfigInterface $config): void
     {
         $this->config = $config;
-
-        if ($this->writer instanceof FastCSVWriter && $this->fastCsvConfig instanceof FastCSVConfig) {
-            $this->fastCsvConfig
-                ->setPath($config->getPath())
-                ->setDelimiter($config->getDelimiter())
-                ->setEnclosure($config->getEnclosure())
-                ->setEscape($config->getEscape());
-        }
 
         $this->reset();
     }

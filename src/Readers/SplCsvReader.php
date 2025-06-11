@@ -66,7 +66,7 @@ class SplCsvReader extends AbstractCsvReader
         } catch (RuntimeException $e) {
             // SplFileObject throws RuntimeException for permission/access issues
             if (str_contains($e->getMessage(), 'Permission denied') || str_contains($e->getMessage(), 'Failed to open stream')) {
-                throw new FileNotFoundException($filePath);
+                throw new FileNotReadableException($filePath);
             }
 
             throw $e;
