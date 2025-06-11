@@ -4,6 +4,7 @@ namespace Phpcsv\CsvHelper\Writers;
 
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
 use Phpcsv\CsvHelper\Exceptions\InvalidConfigurationException;
 use SplFileObject;
 
@@ -15,6 +16,12 @@ use SplFileObject;
  */
 class SplCsvWriter extends AbstractCsvWriter
 {
+    /**
+     * Creates a new SplFileObject-based CSV writer instance.
+     *
+     * @param string|null $target Optional file path for output
+     * @param CsvConfigInterface|null $config Optional configuration object
+     */
     public function __construct(
         ?string $target = null,
         ?CsvConfigInterface $config = null
@@ -27,25 +34,47 @@ class SplCsvWriter extends AbstractCsvWriter
     }
 
     /**
-     * @throws InvalidConfigurationException
+     * Gets the underlying SplFileObject instance.
+     *
+     * @return SplFileObject|null The SplFileObject instance
+     * @throws InvalidConfigurationException If configuration is invalid
+     * @throws FileNotFoundException If directory doesn't exist or file cannot be created
      */
     public function getWriter(): ?SplFileObject
     {
         if (! $this->writer instanceof SplFileObject) {
             $this->validateConfig();
-            $this->writer = new SplFileObject($this->getTarget(), 'w');
-            $this->writer->setCsvControl(
-                $this->getConfig()->getDelimiter(),
-                $this->getConfig()->getEnclosure(),
-                $this->getConfig()->getEscape()
-            );
+
+            try {
+                $targetPath = $this->getTarget();
+                $directory = dirname($targetPath);
+
+                // Check if directory exists
+                if (! is_dir($directory)) {
+                    throw new FileNotFoundException("Directory does not exist: $directory");
+                }
+
+                $this->writer = new SplFileObject($targetPath, 'w');
+                $this->writer->setCsvControl(
+                    $this->getConfig()->getDelimiter(),
+                    $this->getConfig()->getEnclosure(),
+                    $this->getConfig()->getEscape()
+                );
+            } catch (\RuntimeException $e) {
+                throw new FileNotFoundException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
+            } catch (\Exception $e) {
+                // Catch any other exceptions and convert to FileNotFoundException
+                throw new FileNotFoundException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
+            }
         }
 
         return $this->writer;
     }
 
     /**
-     * Gets the CSV configuration object
+     * Gets the current CSV configuration.
+     *
+     * @return CsvConfigInterface The configuration object
      */
     public function getConfig(): CsvConfigInterface
     {
@@ -57,9 +86,10 @@ class SplCsvWriter extends AbstractCsvWriter
     }
 
     /**
-     * Writes a single record to the CSV file
+     * Writes a single record to the CSV file.
      *
-     * @throws InvalidConfigurationException
+     * @param array $data Array of field values to write
+     * @throws InvalidConfigurationException If configuration is invalid
      */
     public function write(array $data): void
     {
@@ -78,18 +108,23 @@ class SplCsvWriter extends AbstractCsvWriter
     }
 
     /**
-     * Prepares data for CSV writing by converting to strings and handling escaping
+     * Prepares data for CSV writing by converting to strings and handling escaping.
+     *
+     * @param array $data Raw data array
+     * @return array Prepared data array with string values
      */
     private function prepareData(array $data): array
     {
-        // @noRector
         $data = array_map($this->convertToString(...), $data);
 
         return array_map(fn (string $value): string => $this->shouldEscape($value) ? $this->escapeValue($value) : $value, $data);
     }
 
     /**
-     * Determines if a value needs escaping
+     * Determines if a value needs escaping.
+     *
+     * @param string $value The value to check
+     * @return bool True if the value needs escaping, false otherwise
      */
     private function shouldEscape(string $value): bool
     {
@@ -100,7 +135,10 @@ class SplCsvWriter extends AbstractCsvWriter
     }
 
     /**
-     * Escapes a value according to CSV rules
+     * Escapes a value according to CSV rules.
+     *
+     * @param string $value The value to escape
+     * @return string The escaped value
      */
     private function escapeValue(string $value): string
     {
@@ -114,9 +152,9 @@ class SplCsvWriter extends AbstractCsvWriter
     }
 
     /**
-     * Validates CSV configuration
+     * Validates CSV configuration.
      *
-     * @throws InvalidConfigurationException
+     * @throws InvalidConfigurationException If any configuration parameter is invalid
      */
     private function validateConfig(): void
     {
@@ -142,8 +180,8 @@ class SplCsvWriter extends AbstractCsvWriter
     /**
      * Converts a mixed value to a string.
      *
-     * @param  mixed  $value  The value to convert.
-     * @return string The converted string.
+     * @param mixed $value The value to convert
+     * @return string The converted string
      */
     public function convertToString(mixed $value): string
     {
@@ -170,13 +208,71 @@ class SplCsvWriter extends AbstractCsvWriter
         return '';
     }
 
+    /**
+     * Sets the output file path.
+     *
+     * @param string $target File path for CSV output
+     */
     public function setTarget(string $target): void
     {
         $this->config->setPath($target);
     }
 
+    /**
+     * Gets the current output file path.
+     *
+     * @return string File path string
+     */
     public function getTarget(): string
     {
         return $this->config->getPath();
+    }
+
+    /**
+     * Gets the source file path.
+     *
+     * @return string File path string
+     */
+    public function getSource(): string
+    {
+        return $this->getTarget();
+    }
+
+    /**
+     * Sets the source file path.
+     *
+     * @param string $source File path to set
+     */
+    public function setSource(string $source): void
+    {
+        $this->setTarget($source);
+    }
+
+    /**
+     * Sets the CSV configuration.
+     *
+     * @param CsvConfigInterface $config New configuration
+     */
+    public function setConfig(CsvConfigInterface $config): void
+    {
+        $this->config = $config;
+        // Reset writer to apply new config
+        $this->writer = null;
+    }
+
+    /**
+     * Writes all records to the CSV file at once.
+     *
+     * @param array<int, array> $records Array of records to write
+     * @throws InvalidConfigurationException If configuration is invalid
+     */
+    public function writeAll(array $records): void
+    {
+        foreach ($records as $record) {
+            if (! is_array($record)) {
+                throw new \InvalidArgumentException('Each record must be an array');
+            }
+            $this->write($record);
+        }
     }
 }

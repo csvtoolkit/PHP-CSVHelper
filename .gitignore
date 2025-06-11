@@ -3,3 +3,4 @@ vendor/
 .phpunit.cache/
 *.csv
 .php-cs-fixer.cache
+junit.xml
