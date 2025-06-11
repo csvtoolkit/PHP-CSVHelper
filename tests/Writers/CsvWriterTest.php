@@ -5,7 +5,7 @@ namespace Tests\Writers;
 use FastCSVWriter;
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
-use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
+use Phpcsv\CsvHelper\Exceptions\DirectoryNotFoundException;
 use Phpcsv\CsvHelper\Writers\CsvWriter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -121,7 +121,7 @@ class CsvWriterTest extends TestCase
             $this->markTestSkipped('FastCSV extension not loaded');
         }
 
-        $this->expectException(FileNotFoundException::class);
+        $this->expectException(DirectoryNotFoundException::class);
 
         // Use a path that definitely doesn't exist
         $writer = new CsvWriter('/nonexistent_directory_12345/file.csv');

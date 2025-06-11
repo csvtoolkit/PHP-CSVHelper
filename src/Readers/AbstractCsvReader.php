@@ -82,6 +82,9 @@ abstract class AbstractCsvReader implements CsvReaderInterface
      * Rewinds the reader to the beginning of the data records.
      *
      * Resets position to -1 (no record read state) and clears cached data.
+     * Subclasses should call parent::rewind() and perform any additional
+     * reset operations specific to their implementation (e.g., resetting
+     * file pointers, re-caching headers, clearing internal state).
      */
     public function rewind(): void
     {

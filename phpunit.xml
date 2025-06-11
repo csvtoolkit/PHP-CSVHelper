@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
@@ -16,7 +16,7 @@
         </testsuite>
     </testsuites>
 
-    <source>
+    <coverage>
         <include>
             <directory>src</directory>
         </include>
@@ -24,9 +24,6 @@
             <directory>src/stubs</directory>
             <file>src/bootstrap.php</file>
         </exclude>
-    </source>
-
-    <coverage>
         <report>
             <html outputDirectory="coverage-html"/>
             <text outputFile="coverage.txt"/>

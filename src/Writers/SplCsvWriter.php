@@ -4,6 +4,7 @@ namespace Phpcsv\CsvHelper\Writers;
 
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use Phpcsv\CsvHelper\Exceptions\DirectoryNotFoundException;
 use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
 use Phpcsv\CsvHelper\Exceptions\InvalidConfigurationException;
 use SplFileObject;
@@ -38,22 +39,23 @@ class SplCsvWriter extends AbstractCsvWriter
      *
      * @return SplFileObject|null The SplFileObject instance
      * @throws InvalidConfigurationException If configuration is invalid
-     * @throws FileNotFoundException If directory doesn't exist or file cannot be created
+     * @throws DirectoryNotFoundException If directory doesn't exist
+     * @throws FileNotFoundException If file cannot be created
      */
     public function getWriter(): ?SplFileObject
     {
         if (! $this->writer instanceof SplFileObject) {
             $this->validateConfig();
 
+            $targetPath = $this->getTarget();
+            $directory = dirname($targetPath);
+
+            // Check if directory exists
+            if (! is_dir($directory)) {
+                throw new DirectoryNotFoundException($directory);
+            }
+
             try {
-                $targetPath = $this->getTarget();
-                $directory = dirname($targetPath);
-
-                // Check if directory exists
-                if (! is_dir($directory)) {
-                    throw new FileNotFoundException("Directory does not exist: $directory");
-                }
-
                 $this->writer = new SplFileObject($targetPath, 'w');
                 $this->writer->setCsvControl(
                     $this->getConfig()->getDelimiter(),
