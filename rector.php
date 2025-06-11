@@ -12,6 +12,7 @@ return RectorConfig::configure()
     ])
     ->withSkip([
         AddOverrideAttributeToOverriddenMethodsRector::class,
+        __DIR__.'/stubs',
     ])
     ->withPreparedSets(
         deadCode: true,
