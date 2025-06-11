@@ -1,14 +1,14 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Readers;
+namespace CsvToolkit\Readers;
 
+use CsvToolkit\Configs\CsvConfig;
+use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Exceptions\EmptyFileException;
+use CsvToolkit\Exceptions\FileNotFoundException;
+use CsvToolkit\Exceptions\FileNotReadableException;
 use Exception;
 use FastCSVReader;
-use Phpcsv\CsvHelper\Configs\CsvConfig;
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
-use Phpcsv\CsvHelper\Exceptions\EmptyFileException;
-use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
-use Phpcsv\CsvHelper\Exceptions\FileNotReadableException;
 use RuntimeException;
 use SplFileObject;
 
@@ -427,7 +427,7 @@ class SplCsvReader extends AbstractCsvReader
      */
     public function getConfig(): CsvConfigInterface
     {
-        if (! $this->config instanceof \Phpcsv\CsvHelper\Contracts\CsvConfigInterface) {
+        if (! $this->config instanceof \CsvToolkit\Contracts\CsvConfigInterface) {
             throw new Exception("Configuration not set");
         }
 

@@ -2,12 +2,12 @@
 
 namespace Tests\Writers;
 
+use CsvToolkit\Configs\CsvConfig;
+use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Exceptions\CsvWriterException;
+use CsvToolkit\Exceptions\DirectoryNotFoundException;
+use CsvToolkit\Writers\CsvWriter;
 use FastCSVWriter;
-use Phpcsv\CsvHelper\Configs\CsvConfig;
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
-use Phpcsv\CsvHelper\Exceptions\CsvWriterException;
-use Phpcsv\CsvHelper\Exceptions\DirectoryNotFoundException;
-use Phpcsv\CsvHelper\Writers\CsvWriter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;

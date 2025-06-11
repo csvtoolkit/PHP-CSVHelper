@@ -1,6 +1,6 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Exceptions;
+namespace CsvToolkit\Exceptions;
 
 /**
  * Exception thrown when a CSV file exists but is not readable

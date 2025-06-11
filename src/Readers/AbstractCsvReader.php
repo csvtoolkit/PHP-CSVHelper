@@ -1,10 +1,10 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Readers;
+namespace CsvToolkit\Readers;
 
+use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Contracts\CsvReaderInterface;
 use FastCSVReader;
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
-use Phpcsv\CsvHelper\Contracts\CsvReaderInterface;
 use SplFileObject;
 
 /**

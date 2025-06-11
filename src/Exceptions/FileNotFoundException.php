@@ -1,6 +1,6 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Exceptions;
+namespace CsvToolkit\Exceptions;
 
 use RuntimeException;
 use Throwable;

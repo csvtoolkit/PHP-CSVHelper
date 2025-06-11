@@ -1,6 +1,6 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Exceptions;
+namespace CsvToolkit\Exceptions;
 
 /**
  * Exception thrown when attempting to read an empty CSV file

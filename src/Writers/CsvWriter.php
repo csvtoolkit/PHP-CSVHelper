@@ -1,14 +1,14 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Writers;
+namespace CsvToolkit\Writers;
 
+use CsvToolkit\Configs\CsvConfig;
+use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Exceptions\CsvWriterException;
+use CsvToolkit\Exceptions\DirectoryNotFoundException;
 use Exception;
 use FastCSVConfig;
 use FastCSVWriter;
-use Phpcsv\CsvHelper\Configs\CsvConfig;
-use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
-use Phpcsv\CsvHelper\Exceptions\CsvWriterException;
-use Phpcsv\CsvHelper\Exceptions\DirectoryNotFoundException;
 use SplFileObject;
 
 /**

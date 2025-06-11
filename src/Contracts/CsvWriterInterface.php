@@ -1,6 +1,6 @@
 <?php
 
-namespace Phpcsv\CsvHelper\Contracts;
+namespace CsvToolkit\Contracts;
 
 use FastCSVWriter;
 use SplFileObject;
