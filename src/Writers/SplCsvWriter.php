@@ -4,8 +4,8 @@ namespace Phpcsv\CsvHelper\Writers;
 
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use Phpcsv\CsvHelper\Exceptions\CsvWriterException;
 use Phpcsv\CsvHelper\Exceptions\DirectoryNotFoundException;
-use Phpcsv\CsvHelper\Exceptions\FileNotFoundException;
 use Phpcsv\CsvHelper\Exceptions\InvalidConfigurationException;
 use SplFileObject;
 
@@ -39,8 +39,8 @@ class SplCsvWriter extends AbstractCsvWriter
      *
      * @return SplFileObject|null The SplFileObject instance
      * @throws InvalidConfigurationException If configuration is invalid
+     * @throws CsvWriterException If target path is empty or file cannot be created
      * @throws DirectoryNotFoundException If directory doesn't exist
-     * @throws FileNotFoundException If file cannot be created
      */
     public function getWriter(): ?SplFileObject
     {
@@ -48,6 +48,11 @@ class SplCsvWriter extends AbstractCsvWriter
             $this->validateConfig();
 
             $targetPath = $this->getTarget();
+
+            if (in_array(trim($targetPath), ['', '0'], true)) {
+                throw new CsvWriterException('Target file path is required');
+            }
+
             $directory = dirname($targetPath);
 
             // Check if directory exists
@@ -63,10 +68,10 @@ class SplCsvWriter extends AbstractCsvWriter
                     $this->getConfig()->getEscape()
                 );
             } catch (\RuntimeException $e) {
-                throw new FileNotFoundException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
+                throw new CsvWriterException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
             } catch (\Exception $e) {
-                // Catch any other exceptions and convert to FileNotFoundException
-                throw new FileNotFoundException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
+                // Catch any other exceptions and convert to CsvWriterException
+                throw new CsvWriterException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
             }
         }
 

@@ -4,6 +4,7 @@ namespace Tests\Writers;
 
 use Phpcsv\CsvHelper\Configs\CsvConfig;
 use Phpcsv\CsvHelper\Contracts\CsvConfigInterface;
+use Phpcsv\CsvHelper\Exceptions\CsvWriterException;
 use Phpcsv\CsvHelper\Exceptions\DirectoryNotFoundException;
 use Phpcsv\CsvHelper\Writers\SplCsvWriter;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -105,6 +106,17 @@ class SplCsvWriterTest extends TestCase
 
         // Use a path that definitely doesn't exist
         $writer = new SplCsvWriter('/nonexistent_directory_12345/file.csv');
+        $writer->getWriter();
+    }
+
+    #[Test]
+    public function test_get_writer_with_empty_path_throws_exception(): void
+    {
+        $this->expectException(CsvWriterException::class);
+        $this->expectExceptionMessage('Target file path is required');
+
+        // Create writer without setting target path
+        $writer = new SplCsvWriter();
         $writer->getWriter();
     }
 
