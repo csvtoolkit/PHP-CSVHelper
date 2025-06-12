@@ -238,23 +238,63 @@ class SplCsvReader extends AbstractCsvReader
             return false;
         }
 
-        $filePosition = $nextPosition;
-        if ($this->getConfig()->hasHeader()) {
-            $filePosition++; // Skip header line
-        }
-
         try {
-            $reader->seek($filePosition);
-            $record = $reader->current();
-
-            if ($record === false || $record === null || ! is_array($record)) {
-                return false;
+            // Position the reader at the correct record
+            if ($this->position === -1) {
+                // First read - start from beginning
+                if ($this->getConfig()->hasHeader()) {
+                    // Cache header first
+                    if ($this->header === null) {
+                        $reader->rewind();
+                        $headerRecord = $reader->current();
+                        if ($headerRecord !== false && $headerRecord !== [null] && is_array($headerRecord) && ! $this->isInvalidRecord($headerRecord)) {
+                            $this->header = $headerRecord;
+                        }
+                    }
+                    // Now seek to first data record (line 1)
+                    $reader->seek(1);
+                } else {
+                    // No header, start at beginning
+                    $reader->rewind();
+                }
+                // Reader is now positioned at the first data record
+            } else {
+                // Subsequent reads - advance to next record
+                $reader->next();
             }
 
-            // Update position only after successful read
-            $this->position = $nextPosition;
-            $this->cachedRecord = $record;  // Cache the record
+            // Read records until we find a valid one
+            do {
+                $record = $reader->current();
 
+                if ($record === false) {
+                    return false;
+                }
+
+                // Ensure we have a valid array record
+                if (! is_array($record)) {
+                    $reader->next();
+                    $nextPosition++;
+
+                    continue;                   // skip non-array data
+                }
+
+                if ($this->isInvalidRecord($record)) {
+                    $reader->next();
+                    $nextPosition++;
+
+                    continue;                   // skip invalid record
+                }
+
+                break;                          // valid record found
+            } while (true);
+
+            $this->position = $nextPosition;
+
+            /** @var array $record */
+            $this->cachedRecord = $record;
+
+            /** @var array $record */
             return $record;
         } catch (Exception) {
             return false;
