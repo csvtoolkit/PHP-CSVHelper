@@ -6,6 +6,8 @@
 [![License](https://poser.pugx.org/csvtoolkit/csv-helper/license)](https://packagist.org/packages/csvtoolkit/csv-helper)
 [![PHP Version Require](https://poser.pugx.org/csvtoolkit/csv-helper/require/php)](https://packagist.org/packages/csvtoolkit/csv-helper)
 
+> ⚠️ **Experimental Status**: This library is currently in experimental phase. While it works correctly and passes all tests, please use with caution in production environments. We recommend thorough testing in your specific use case before deployment.
+
 A modern, high-performance CSV processing library for PHP that automatically selects the best available implementation. CsvToolkit provides a unified interface for reading and writing CSV files, with automatic fallback between the FastCSV extension (when available) and PHP's built-in SplFileObject.
 
 ## Features
@@ -194,9 +196,18 @@ try {
 
 When the FastCSV extension is available, CsvToolkit provides significant performance improvements:
 
-- **Reading**: Up to 3-5x faster than SplFileObject
-- **Writing**: Up to 2-3x faster than SplFileObject  
-- **Memory Usage**: Lower memory footprint for large files
+**Validated Benchmarks (comprehensive testing):**
+- **4-7x faster** than SplFileObject implementation
+- **Read Performance**: Up to 383K records/sec vs 82K records/sec (SplFileObject)
+- **Write Performance**: Up to 692K records/sec vs 109K records/sec (SplFileObject)
+- **Memory Efficient**: Constant memory usage with streaming for datasets of any size
+- **Time per Record**: 1.4-3.7μs (FastCSV) vs 9.1-18.7μs (SplFileObject)
+
+**Real-world Performance Impact:**
+- **Lower development costs**: Reduce your team's time spent on CSV processing optimization
+- **Reduce infrastructure costs**: More efficient processing means lower server resources needed
+
+**Benchmarking Suite**: Comprehensive performance validation available at [benchmarking-php-fastcsv](https://github.com/csvtoolkit/benchmarking-php-fastcsv)
 
 The library automatically selects the best available implementation without any code changes required.
 
@@ -244,6 +255,21 @@ We welcome contributions! Please follow these guidelines:
 
 - PHP 8.1 or higher
 - Optional: FastCSV extension for enhanced performance
+
+## Support the Project
+
+If you find CSV Toolkit useful for your projects, please consider sponsoring the development! Your support helps maintain and improve this high-performance CSV library while reducing development and infrastructure costs.
+
+[![Sponsor](https://img.shields.io/badge/sponsor-❤️-ff69b4?style=for-the-badge&logo=github-sponsors)](https://github.com/sponsors/achrafAa)
+
+**Why sponsor?**
+- 🚀 Accelerate development of new features
+- 🐛 Faster bug fixes and improvements  
+- 📚 Better documentation and examples
+- 🎯 Priority support for feature requests
+- 💡 Fund research into even faster CSV processing techniques
+- 💰 **Lower development costs** - Reduce your team's time spent on CSV processing optimization
+- 🏗️ **Reduce infrastructure costs** - More efficient processing means lower server resources needed
 
 ## License
 
