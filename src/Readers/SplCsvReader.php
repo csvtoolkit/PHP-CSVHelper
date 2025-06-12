@@ -238,16 +238,22 @@ class SplCsvReader extends AbstractCsvReader
             return false;
         }
 
-        $filePosition = $nextPosition;
-        if ($this->getConfig()->hasHeader()) {
-            $filePosition++; // Skip header line
-        }
-
         try {
-            $reader->seek($filePosition);
+            // For the first read, position the reader correctly
+            if ($this->position === -1) {
+                $reader->rewind();
+                if ($this->getConfig()->hasHeader()) {
+                    $reader->current(); // Read header
+                    $reader->next();    // Move past header
+                }
+            } else {
+                // For subsequent reads, just advance sequentially (much faster than seek)
+                $reader->next();
+            }
+
             $record = $reader->current();
 
-            if ($record === false || $record === null || ! is_array($record)) {
+            if ($record === false || $record === null || ! is_array($record) || $this->isInvalidRecord($record)) {
                 return false;
             }
 
