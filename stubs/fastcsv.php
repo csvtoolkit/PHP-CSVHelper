@@ -5,6 +5,19 @@
  * @version 0.0.1
  */
 
+/**
+ * Character encoding constants
+ */
+if (!defined('CSV_ENCODING_UTF8')) {
+    define('CSV_ENCODING_UTF8', 0);
+    define('CSV_ENCODING_UTF16LE', 1);
+    define('CSV_ENCODING_UTF16BE', 2);
+    define('CSV_ENCODING_UTF32LE', 3);
+    define('CSV_ENCODING_UTF32BE', 4);
+    define('CSV_ENCODING_ASCII', 5);
+    define('CSV_ENCODING_LATIN1', 6);
+}
+
 // Only declare classes if the FastCSV extension is not loaded
 if (!extension_loaded('fastcsv')) {
 
@@ -24,15 +37,17 @@ class FastCSVConfig {
      * 
      * @return string The delimiter character (default: ',')
      */
-    public function getDelimiter(): string {}
+    public function getDelimiter(): string {
+        return '';
+    }
 
     /**
      * Sets the field delimiter character
      * 
      * @param string $delimiter Single character delimiter
-     * @return FastCSVConfig Returns self for method chaining
+     * @return $this
      */
-    public function setDelimiter(string $delimiter): FastCSVConfig {
+    public function setDelimiter(string $delimiter): self {
         return $this;
     }
 
@@ -41,15 +56,17 @@ class FastCSVConfig {
      * 
      * @return string The enclosure character (default: '"')
      */
-    public function getEnclosure(): string {}
+    public function getEnclosure(): string {
+        return '';
+    }
 
     /**
      * Sets the field enclosure character
      * 
      * @param string $enclosure Single character enclosure
-     * @return FastCSVConfig Returns self for method chaining
+     * @return $this
      */
-    public function setEnclosure(string $enclosure): FastCSVConfig {
+    public function setEnclosure(string $enclosure): self {
         return $this;
     }
 
@@ -58,15 +75,17 @@ class FastCSVConfig {
      * 
      * @return string The escape character (default: '\\')
      */
-    public function getEscape(): string {}
+    public function getEscape(): string {
+        return '';
+    }
 
     /**
      * Sets the escape character
      * 
      * @param string $escape Single character escape
-     * @return FastCSVConfig Returns self for method chaining
+     * @return $this
      */
-    public function setEscape(string $escape): FastCSVConfig {
+    public function setEscape(string $escape): self {
         return $this;
     }
 
@@ -75,15 +94,17 @@ class FastCSVConfig {
      * 
      * @return string The file path
      */
-    public function getPath(): string {}
+    public function getPath(): string {
+        return '';
+    }
 
     /**
      * Sets the CSV file path
      * 
      * @param string $path Path to the CSV file
-     * @return FastCSVConfig Returns self for method chaining
+     * @return $this
      */
-    public function setPath(string $path): FastCSVConfig {
+    public function setPath(string $path): self {
         return $this;
     }
 
@@ -92,15 +113,17 @@ class FastCSVConfig {
      * 
      * @return int The offset (default: 0)
      */
-    public function getOffset(): int {}
+    public function getOffset(): int {
+        return 0;
+    }
 
     /**
      * Sets the number of lines to skip at the beginning
      * 
      * @param int $offset Number of lines to skip
-     * @return FastCSVConfig Returns self for method chaining
+     * @return $this
      */
-    public function setOffset(int $offset): FastCSVConfig {
+    public function setOffset(int $offset): self {
         return $this;
     }
 
@@ -109,15 +132,153 @@ class FastCSVConfig {
      * 
      * @return bool True if CSV has headers (default: true)
      */
-    public function hasHeader(): bool {}
+    public function hasHeader(): bool {
+        return true;
+    }
 
     /**
      * Sets whether the CSV has headers
      * 
      * @param bool $hasHeader True if CSV has headers
-     * @return FastCSVConfig Returns self for method chaining
+     * @return $this
      */
-    public function setHasHeader(bool $hasHeader): FastCSVConfig {
+    public function setHasHeader(bool $hasHeader): self {
+        return $this;
+    }
+
+    /**
+     * Gets the character encoding
+     * 
+     * @return int The encoding constant (default: CSV_ENCODING_UTF8)
+     */
+    public function getEncoding(): int {
+        return CSV_ENCODING_UTF8;
+    }
+
+    /**
+     * Sets the character encoding
+     * 
+     * @param int $encoding One of the CSV_ENCODING_* constants
+     * @return $this
+     */
+    public function setEncoding(int $encoding): self {
+        return $this;
+    }
+
+    /**
+     * Checks if BOM (Byte Order Mark) should be written
+     * 
+     * @return bool True if BOM should be written (default: false)
+     */
+    public function getWriteBOM(): bool {
+        return false;
+    }
+
+    /**
+     * Sets whether to write BOM (Byte Order Mark)
+     * 
+     * @param bool $writeBOM True to write BOM
+     * @return $this
+     */
+    public function setWriteBOM(bool $writeBOM): self {
+        return $this;
+    }
+
+    /**
+     * Checks if strict mode is enabled
+     * 
+     * @return bool True if strict mode is enabled (default: true)
+     */
+    public function getStrictMode(): bool {
+        return true;
+    }
+
+    /**
+     * Sets whether to use strict mode
+     * In strict mode, fields with spaces are always quoted
+     * 
+     * @param bool $strictMode True to enable strict mode
+     * @return $this
+     */
+    public function setStrictMode(bool $strictMode): self {
+        return $this;
+    }
+
+    /**
+     * Checks if empty lines should be skipped
+     * 
+     * @return bool True if empty lines should be skipped (default: false)
+     */
+    public function getSkipEmptyLines(): bool {
+        return false;
+    }
+
+    /**
+     * Sets whether to skip empty lines
+     * 
+     * @param bool $skipEmptyLines True to skip empty lines
+     * @return $this
+     */
+    public function setSkipEmptyLines(bool $skipEmptyLines): self {
+        return $this;
+    }
+
+    /**
+     * Checks if fields should be trimmed
+     * 
+     * @return bool True if fields should be trimmed (default: false)
+     */
+    public function getTrimFields(): bool {
+        return false;
+    }
+
+    /**
+     * Sets whether to trim fields
+     * 
+     * @param bool $trimFields True to trim fields
+     * @return $this
+     */
+    public function setTrimFields(bool $trimFields): self {
+        return $this;
+    }
+
+    /**
+     * Checks if quotes should be preserved
+     * 
+     * @return bool True if quotes should be preserved (default: false)
+     */
+    public function getPreserveQuotes(): bool {
+        return false;
+    }
+
+    /**
+     * Sets whether to preserve quotes
+     * 
+     * @param bool $preserveQuotes True to preserve quotes
+     * @return $this
+     */
+    public function setPreserveQuotes(bool $preserveQuotes): self {
+        return $this;
+    }
+
+    /**
+     * Checks if auto-flush is enabled
+     * Auto-flush causes data to be written to disk immediately after each write operation.
+     * When disabled, data is buffered until flush() is called or the writer is closed.
+     * 
+     * @return bool True if auto-flush is enabled (default: true)
+     */
+    public function getAutoFlush(): bool {
+        return true;
+    }
+
+    /**
+     * Sets whether to automatically flush data after each write
+     * 
+     * @param bool $autoFlush True to enable auto-flush, false for manual flushing
+     * @return $this
+     */
+    public function setAutoFlush(bool $autoFlush): self {
         return $this;
     }
 }
@@ -133,6 +294,7 @@ class FastCSVReader {
      * 
      * @param FastCSVConfig $config Configuration object containing file path and parsing options
      * @throws Exception If the file cannot be opened
+     * @phpstan-ignore constructor.unusedParameter
      */
     public function __construct(FastCSVConfig $config) {}
 
@@ -141,14 +303,18 @@ class FastCSVReader {
      * 
      * @return array|false Array of header strings, or false if no headers
      */
-    public function getHeaders() {}
+    public function getHeaders(): array|false {
+        return [];
+    }
 
     /**
      * Returns the next record from the CSV file
      * 
-     * @return array|false Array of strings representing the record, or false if EOF
+     * @return array|false|null Array of strings representing the record, false if EOF, or null if malformed data
      */
-    public function nextRecord(): array|false {}
+    public function nextRecord(): array|false|null {
+        return [];
+    }
 
     /**
      * Closes the reader and frees resources
@@ -171,7 +337,9 @@ class FastCSVReader {
      * @param FastCSVConfig $config New configuration
      * @return bool True on success, false on failure
      */
-    public function setConfig(FastCSVConfig $config): bool {}
+    public function setConfig(FastCSVConfig $config): bool {
+        return true;
+    }
 
     /**
      * Gets the total number of data records in the file
@@ -179,7 +347,9 @@ class FastCSVReader {
      * 
      * @return int Total record count, or -1 on error
      */
-    public function getRecordCount(): int {}
+    public function getRecordCount(): int {
+        return 0;
+    }
 
     /**
      * Gets the current position relative to data records
@@ -187,7 +357,9 @@ class FastCSVReader {
      * 
      * @return int Current position, or -1 on error
      */
-    public function getPosition(): int {}
+    public function getPosition(): int {
+        return 0;
+    }
 
     /**
      * Seeks to a specific record position and returns the record
@@ -196,14 +368,18 @@ class FastCSVReader {
      * @param int $position Zero-based position to seek to
      * @return array|false Record data on success, false if position is invalid or on error
      */
-    public function seek(int $position): array|false {}
+    public function seek(int $position): array|false {
+        return [];
+    }
 
     /**
      * Checks if there are more records available from current position
      * 
      * @return bool True if more records exist, false if at end of file or error
      */
-    public function hasNext(): bool {}
+    public function hasNext(): bool {
+        return false;
+    }
 }
 
 /**
@@ -218,24 +394,40 @@ class FastCSVWriter {
      * @param FastCSVConfig $config Configuration object containing file path and parsing options
      * @param array $headers Array of header strings
      * @throws Exception If the file cannot be created
+     * @phpstan-ignore constructor.unusedParameter
      */
     public function __construct(FastCSVConfig $config, array $headers) {}
 
     /**
      * Writes a record to the CSV file
      * 
-     * @param array $record Array of field values to write
+     * @param array $record Array of strings representing the record
      * @return bool True on success, false on failure
      */
-    public function writeRecord(array $record) {}
+    public function writeRecord(array $record): bool {
+        return true;
+    }
 
     /**
-     * Writes a record using an associative array mapped to headers
+     * Writes a record using field names and values
      * 
-     * @param array $fieldsMap Associative array mapping header names to values
+     * @param array $fieldsMap Associative array of field names and values
      * @return bool True on success, false on failure
      */
-    public function writeRecordMap(array $fieldsMap) {}
+    public function writeRecordMap(array $fieldsMap): bool {
+        return true;
+    }
+
+    /**
+     * Manually flushes buffered data to disk
+     * This method is useful when auto-flush is disabled for performance reasons.
+     * 
+     * @return bool True on success, false on failure
+     * @throws Exception If writer is not initialized or flush operation fails
+     */
+    public function flush(): bool {
+        return true;
+    }
 
     /**
      * Closes the writer and frees resources

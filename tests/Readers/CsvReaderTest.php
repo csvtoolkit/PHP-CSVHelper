@@ -3,9 +3,9 @@
 namespace Tests\Readers;
 
 use CsvToolkit\Configs\CsvConfig;
-use CsvToolkit\Contracts\CsvConfigInterface;
 use CsvToolkit\Exceptions\EmptyFileException;
 use CsvToolkit\Exceptions\FileNotFoundException;
+use CsvToolkit\Helpers\ConfigHelper;
 use CsvToolkit\Readers\CsvReader;
 use CsvToolkit\Writers\SplCsvWriter;
 use FastCSVReader;
@@ -97,7 +97,7 @@ class CsvReaderTest extends TestCase
         $reader = new CsvReader();
 
         $this->assertInstanceOf(CsvReader::class, $reader);
-        $this->assertInstanceOf(CsvConfigInterface::class, $reader->getConfig());
+        $this->assertInstanceOf(CsvConfig::class, $reader->getConfig());
         $this->assertEquals('', $reader->getSource());
         $this->assertEquals(-1, $reader->getCurrentPosition());
     }
@@ -112,7 +112,7 @@ class CsvReaderTest extends TestCase
         $reader = new CsvReader($this->testFile);
 
         $this->assertEquals($this->testFile, $reader->getSource());
-        $this->assertInstanceOf(CsvConfigInterface::class, $reader->getConfig());
+        $this->assertInstanceOf(CsvConfig::class, $reader->getConfig());
     }
 
     #[Test]
@@ -420,7 +420,8 @@ class CsvReaderTest extends TestCase
 
         // Create test file with custom delimiter
         $testFile = self::TEST_DATA_DIR . '/custom_config.csv';
-        $writer = new SplCsvWriter($testFile, $config);
+        $splConfig = ConfigHelper::ensureSplConfig($config);
+        $writer = new SplCsvWriter($testFile, $splConfig);
 
         foreach ($expectedData as $row) {
             $writer->write($row);
@@ -479,9 +480,9 @@ class CsvReaderTest extends TestCase
         $header = $reader->getHeader();
         $this->assertEquals(['col1', 'col2'], $header);
 
-        // FastCSV should handle malformed data gracefully
+        // FastCSV returns false for malformed data (unclosed quotes)
         $record = $reader->nextRecord();
-        $this->assertIsArray($record);
+        $this->assertFalse($record);
     }
 
     #[Test]

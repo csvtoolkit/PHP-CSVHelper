@@ -4,6 +4,7 @@ namespace Tests;
 
 use CsvToolkit\Configs\CsvConfig;
 use CsvToolkit\Exceptions\EmptyFileException;
+use CsvToolkit\Helpers\ConfigHelper;
 use CsvToolkit\Readers\CsvReader;
 use CsvToolkit\Readers\SplCsvReader;
 use CsvToolkit\Writers\CsvWriter;
@@ -314,14 +315,15 @@ class CompatibilityTest extends TestCase
     {
         $testFile = self::TEST_DATA_DIR . '/config_test.csv';
 
-        // Create file with specific config
-        $writer = new SplCsvWriter($testFile, $config);
+        // Create file with specific config using ConfigHelper to convert
+        $splConfig = ConfigHelper::ensureSplConfig($config);
+        $writer = new SplCsvWriter($testFile, $splConfig);
         foreach ($this->testData as $record) {
             $writer->write($record);
         }
         unset($writer);
 
-        $splReader = new SplCsvReader($testFile, $config);
+        $splReader = new SplCsvReader($testFile, $splConfig);
         $csvReader = null;
 
         if (extension_loaded('fastcsv')) {
@@ -380,8 +382,8 @@ class CompatibilityTest extends TestCase
             $csvContent = file_get_contents($csvFile);
 
             // Parse both files to compare data (not necessarily exact string match due to different implementations)
-            $splLines = str_getcsv($splContent, "\n");
-            $csvLines = str_getcsv($csvContent, "\n");
+            $splLines = str_getcsv($splContent, "\n", '"', '\\');
+            $csvLines = str_getcsv($csvContent, "\n", '"', '\\');
 
             $this->assertCount(count($csvLines), $splLines, 'Both files should have same number of lines');
         }

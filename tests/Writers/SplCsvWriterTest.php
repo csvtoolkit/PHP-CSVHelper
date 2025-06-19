@@ -2,8 +2,7 @@
 
 namespace Tests\Writers;
 
-use CsvToolkit\Configs\CsvConfig;
-use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Configs\SplConfig;
 use CsvToolkit\Exceptions\CsvWriterException;
 use CsvToolkit\Exceptions\DirectoryNotFoundException;
 use CsvToolkit\Writers\SplCsvWriter;
@@ -64,7 +63,7 @@ class SplCsvWriterTest extends TestCase
         $writer = new SplCsvWriter();
 
         $this->assertInstanceOf(SplCsvWriter::class, $writer);
-        $this->assertInstanceOf(CsvConfigInterface::class, $writer->getConfig());
+        $this->assertInstanceOf(SplConfig::class, $writer->getConfig());
         $this->assertEquals('', $writer->getSource());
     }
 
@@ -74,13 +73,13 @@ class SplCsvWriterTest extends TestCase
         $writer = new SplCsvWriter($this->testFile);
 
         $this->assertEquals($this->testFile, $writer->getSource());
-        $this->assertInstanceOf(CsvConfigInterface::class, $writer->getConfig());
+        $this->assertInstanceOf(SplConfig::class, $writer->getConfig());
     }
 
     #[Test]
     public function test_constructor_with_custom_config(): void
     {
-        $config = new CsvConfig();
+        $config = new SplConfig();
         $config->setDelimiter(';')->setEnclosure("'")->setHasHeader(false);
 
         $writer = new SplCsvWriter($this->testFile, $config);
@@ -202,7 +201,7 @@ class SplCsvWriterTest extends TestCase
     {
         $writer = new SplCsvWriter($this->testFile);
 
-        $newConfig = new CsvConfig();
+        $newConfig = new SplConfig();
         $newConfig->setDelimiter(';')->setEnclosure("'")->setHasHeader(false);
 
         $writer->setConfig($newConfig);
@@ -214,7 +213,7 @@ class SplCsvWriterTest extends TestCase
 
     #[Test]
     #[DataProvider('csvConfigProvider')]
-    public function test_different_csv_configurations(CsvConfig $config, array $data, string $expectedPattern): void
+    public function test_different_csv_configurations(SplConfig $config, array $data, string $expectedPattern): void
     {
         $writer = new SplCsvWriter($this->testFile, $config);
 
@@ -231,17 +230,17 @@ class SplCsvWriterTest extends TestCase
     {
         return [
             'semicolon delimiter' => [
-                (new CsvConfig())->setDelimiter(';'),
+                (new SplConfig())->setDelimiter(';'),
                 [['col1', 'col2'], ['value1', 'value2']],
                 '/col1;col2.*value1;value2/s',
             ],
             'custom enclosure' => [
-                (new CsvConfig())->setEnclosure("'"),
+                (new SplConfig())->setEnclosure("'"),
                 [['col1', 'col2'], ['value with space', 'value2']],
                 "/'value with space',value2/",
             ],
             'tab delimiter' => [
-                (new CsvConfig())->setDelimiter("\t"),
+                (new SplConfig())->setDelimiter("\t"),
                 [['col1', 'col2'], ['value1', 'value2']],
                 "/col1\t.*value1\t/s",
             ],

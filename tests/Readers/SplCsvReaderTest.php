@@ -2,8 +2,7 @@
 
 namespace Tests\Readers;
 
-use CsvToolkit\Configs\CsvConfig;
-use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Configs\SplConfig;
 use CsvToolkit\Exceptions\FileNotFoundException;
 use CsvToolkit\Readers\SplCsvReader;
 use CsvToolkit\Writers\SplCsvWriter;
@@ -91,7 +90,7 @@ class SplCsvReaderTest extends TestCase
         $reader = new SplCsvReader();
 
         $this->assertInstanceOf(SplCsvReader::class, $reader);
-        $this->assertInstanceOf(CsvConfigInterface::class, $reader->getConfig());
+        $this->assertInstanceOf(SplConfig::class, $reader->getConfig());
         $this->assertEquals('', $reader->getSource());
         $this->assertEquals(-1, $reader->getCurrentPosition());
     }
@@ -102,13 +101,13 @@ class SplCsvReaderTest extends TestCase
         $reader = new SplCsvReader($this->testFile);
 
         $this->assertEquals($this->testFile, $reader->getSource());
-        $this->assertInstanceOf(CsvConfigInterface::class, $reader->getConfig());
+        $this->assertInstanceOf(SplConfig::class, $reader->getConfig());
     }
 
     #[Test]
     public function test_constructor_with_custom_config(): void
     {
-        $config = new CsvConfig();
+        $config = new SplConfig();
         $config->setDelimiter(';')->setEnclosure("'")->setHasHeader(false);
 
         $reader = new SplCsvReader($this->testFile, $config);

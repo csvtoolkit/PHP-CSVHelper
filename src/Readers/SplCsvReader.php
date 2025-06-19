@@ -2,13 +2,13 @@
 
 namespace CsvToolkit\Readers;
 
-use CsvToolkit\Configs\CsvConfig;
-use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Configs\SplConfig;
+use CsvToolkit\Contracts\CsvReaderInterface;
 use CsvToolkit\Exceptions\EmptyFileException;
 use CsvToolkit\Exceptions\FileNotFoundException;
 use CsvToolkit\Exceptions\FileNotReadableException;
+use CsvToolkit\Helpers\FileValidator;
 use Exception;
-use FastCSVReader;
 use RuntimeException;
 use SplFileObject;
 
@@ -20,19 +20,31 @@ use SplFileObject;
  *
  * This implementation is designed to match FastCSV extension behavior exactly.
  */
-class SplCsvReader extends AbstractCsvReader
+class SplCsvReader implements CsvReaderInterface
 {
+    protected ?SplConfig $config = null;
+
+    protected ?array $header = null;
+
+    protected ?int $recordCount = null;
+
+    protected int $position = -1;
+
+    protected ?array $cachedRecord = null;
+
+    protected ?SplFileObject $reader = null;
+
     /**
      * Creates a new SplFileObject-based CSV reader instance.
      *
      * @param string|null $source Optional file path to CSV file
-     * @param CsvConfigInterface|null $config Optional configuration object
+     * @param SplConfig|null $config Optional configuration object
      */
     public function __construct(
         ?string $source = null,
-        ?CsvConfigInterface $config = null
+        ?SplConfig $config = null
     ) {
-        $this->config = $config ?? new CsvConfig();
+        $this->config = $config ?? new SplConfig();
 
         if ($source !== null) {
             $this->setSource($source);
@@ -42,16 +54,15 @@ class SplCsvReader extends AbstractCsvReader
     /**
      * Gets the underlying SplFileObject instance.
      *
-     * @return SplFileObject|FastCSVReader|null The SplFileObject instance
-     * @throws FileNotFoundException If the CSV file doesn't exist
-     * @throws FileNotReadableException If the file cannot be read
-     * @throws EmptyFileException If the file is empty
+     * @return SplFileObject The SplFileObject instance
      */
-    public function getReader(): null|SplFileObject|FastCSVReader
+    public function getReader(): SplFileObject
     {
         if (! $this->reader instanceof SplFileObject) {
             $this->setReader();
         }
+
+        assert($this->reader instanceof SplFileObject);
 
         return $this->reader;
     }
@@ -61,33 +72,21 @@ class SplCsvReader extends AbstractCsvReader
      *
      * @throws FileNotFoundException If the CSV file doesn't exist
      * @throws FileNotReadableException If the file cannot be read
-     * @throws EmptyFileException If the file is empty
+     * @throws EmptyFileException|Exception If the file is empty
      */
     public function setReader(): void
     {
         $filePath = $this->getConfig()->getPath();
-
-        if (! file_exists($filePath)) {
-            throw new FileNotFoundException($filePath);
-        }
-
-        if (! is_readable($filePath)) {
-            throw new FileNotReadableException($filePath);
-        }
+        FileValidator::validateFileReadable($filePath);
 
         try {
             $this->reader = new SplFileObject($filePath);
         } catch (RuntimeException $e) {
-            // SplFileObject throws RuntimeException for permission/access issues
             if (str_contains($e->getMessage(), 'Permission denied') || str_contains($e->getMessage(), 'Failed to open stream')) {
                 throw new FileNotReadableException($filePath);
             }
 
             throw $e;
-        }
-
-        if ($this->reader->getSize() === 0) {
-            throw new EmptyFileException($filePath);
         }
 
         $this->reader->setFlags(SplFileObject::READ_CSV);
@@ -96,64 +95,6 @@ class SplCsvReader extends AbstractCsvReader
             $this->getConfig()->getEnclosure(),
             $this->getConfig()->getEscape()
         );
-
-        // Initialize position and cache headers like FastCSV extension does
-        $this->initializeReader();
-    }
-
-    /**
-     * Initialize reader state to match FastCSV extension behavior.
-     *
-     * Sets up initial position tracking and caches headers if needed.
-     */
-    private function initializeReader(): void
-    {
-        if (! $this->reader instanceof SplFileObject) {
-            return;
-        }
-
-        $this->reader->rewind();
-        $this->recordCount = null;
-        $this->header = null;
-        $this->position = -1;  // Start at -1 (no record read)
-
-        if ($this->getConfig()->hasHeader()) {
-            $this->cacheHeaders();
-        }
-    }
-
-    /**
-     * Cache headers from first line if hasHeader is true.
-     *
-     * Reads the first line of the CSV file and stores it as header data.
-     */
-    private function cacheHeaders(): void
-    {
-        if (! $this->getConfig()->hasHeader() || $this->header !== null) {
-            return;
-        }
-
-        /** @var SplFileObject $reader */
-        $reader = $this->getReader();
-        if (! $reader instanceof SplFileObject) {
-            return;
-        }
-
-        // Save current position
-        $currentPosition = $reader->key();
-
-        // Go to beginning and read header
-        $reader->rewind();
-        $headerRecord = $reader->current();
-
-        if ($headerRecord !== false && $headerRecord !== [null] && is_array($headerRecord) && ! $this->isInvalidRecord($headerRecord)) {
-            $this->header = $headerRecord;
-        }
-
-        // Restore position if it was valid
-        if ($currentPosition >= 0) {
-            $reader->seek($currentPosition);
-        }
     }
 
     /**
@@ -163,43 +104,41 @@ class SplCsvReader extends AbstractCsvReader
      */
     public function getRecordCount(): ?int
     {
-        if ($this->recordCount === null) {
-            /** @var SplFileObject $reader */
-            $reader = $this->getReader();
+        if ($this->recordCount !== null) {
+            return $this->recordCount;
+        }
 
-            // Save current position
-            $savedPosition = $reader->key();
+        $reader = $this->getReader();
 
-            // Count actual valid records like FastCSV extension does
-            $reader->rewind();
+        try {
+            $currentPosition = $reader->ftell();
 
-            // Skip header if configured
-            if ($this->getConfig()->hasHeader()) {
-                $reader->current(); // Read header
-                $reader->next();    // Move past header
+            // Handle ftell() returning false
+            if ($currentPosition === false) {
+                $currentPosition = 0;
             }
 
-            // Count remaining valid records
-            $count = 0;
-            while (! $reader->eof()) {
-                $record = $reader->current();
-                if ($record !== false && $record !== [null] && is_array($record) && ! $this->isInvalidRecord($record)) {
-                    $count++;
+            // Count actual lines by iterating
+            $reader->rewind();
+            $lineCount = 0;
+            while ($reader->valid()) {
+                $line = $reader->current();
+                // Only count non-empty lines or lines with actual content
+                if ($line !== false && $line !== null && $line !== [] && $line !== [null]) {
+                    $lineCount++;
                 }
                 $reader->next();
             }
 
-            // Restore position
-            if ($savedPosition >= 0) {
-                $reader->seek($savedPosition);
-            } else {
-                $reader->rewind();
-            }
+            $reader->fseek($currentPosition);
 
-            $this->recordCount = $count;
+            $this->recordCount = $this->getConfig()->hasHeader() ? max(0, $lineCount - 1) : $lineCount;
+
+            return $this->recordCount;
+
+        } catch (Exception) {
+            return null;
         }
-
-        return $this->recordCount;
     }
 
     /**
@@ -212,90 +151,76 @@ class SplCsvReader extends AbstractCsvReader
         if (! $this->reader instanceof SplFileObject) {
             return;
         }
-
         $this->reader->rewind();
-        parent::rewind();  // This will reset position and clear cache
-
-        // Cache headers if needed
-        if ($this->getConfig()->hasHeader() && $this->header === null) {
-            $this->cacheHeaders();
-        }
+        $this->position = -1;
+        $this->cachedRecord = null;
+        // Don't clear header cache as it's still valid
     }
 
     /**
      * Reads the next record sequentially.
      *
      * @return array|false Array of field values, or false if end of file
+     * @throws Exception
      */
     public function nextRecord(): array|false
     {
-        /** @var SplFileObject $reader */
         $reader = $this->getReader();
 
-        // Calculate next file position
-        $nextPosition = $this->position + 1;
-        if ($nextPosition >= $this->getRecordCount()) {
-            return false;
-        }
-
         try {
-            // Position the reader at the correct record
             if ($this->position === -1) {
-                // First read - start from beginning
+                // First read - ensure we start from the correct position
+                $reader->rewind();
+
                 if ($this->getConfig()->hasHeader()) {
-                    // Cache header first
+                    // Cache header if not already cached
                     if ($this->header === null) {
-                        $reader->rewind();
                         $headerRecord = $reader->current();
                         if ($headerRecord !== false && $headerRecord !== [null] && is_array($headerRecord) && ! $this->isInvalidRecord($headerRecord)) {
                             $this->header = $headerRecord;
                         }
                     }
-                    // Now seek to first data record (line 1)
-                    $reader->seek(1);
+                    // Always move to first data record, regardless of current position
+                    $reader->seek(1); // Seek to line 1 (first data record)
                 } else {
-                    // No header, start at beginning
-                    $reader->rewind();
+                    // No header, start from line 0
+                    $reader->seek(0);
                 }
-                // Reader is now positioned at the first data record
+
+                $this->position = 0;
             } else {
                 // Subsequent reads - advance to next record
                 $reader->next();
+                $this->position++;
             }
 
-            // Read records until we find a valid one
-            do {
+            // Read records until we find a valid one or reach EOF
+            while ($reader->valid()) {
                 $record = $reader->current();
 
-                if ($record === false) {
-                    return false;
-                }
-
-                // Ensure we have a valid array record
-                if (! is_array($record)) {
+                if ($record === false || ! is_array($record)) {
                     $reader->next();
-                    $nextPosition++;
+                    $this->position++;
 
-                    continue;                   // skip non-array data
+                    continue;
                 }
 
                 if ($this->isInvalidRecord($record)) {
                     $reader->next();
-                    $nextPosition++;
+                    $this->position++;
 
-                    continue;                   // skip invalid record
+                    continue;
                 }
 
-                break;                          // valid record found
-            } while (true);
+                // Valid record found
+                $this->cachedRecord = $record;
 
-            $this->position = $nextPosition;
+                return $record;
+            }
 
-            /** @var array $record */
-            $this->cachedRecord = $record;
+            // End of file reached
+            return false;
 
-            /** @var array $record */
-            return $record;
         } catch (Exception) {
             return false;
         }
@@ -316,8 +241,12 @@ class SplCsvReader extends AbstractCsvReader
      *
      * @return array|false Array of field values, or false if no record has been read
      */
-    public function getRecord(): array|false
+    public function getRecord(?int $position = null): array|false
     {
+        if ($position !== null) {
+            return $this->seek($position);
+        }
+
         if ($this->position === -1) {
             return false;  // No record has been read yet
         }
@@ -327,7 +256,6 @@ class SplCsvReader extends AbstractCsvReader
             return $this->cachedRecord;
         }
 
-        /** @var SplFileObject $reader */
         $reader = $this->getReader();
 
         // Calculate file position
@@ -363,12 +291,41 @@ class SplCsvReader extends AbstractCsvReader
             return false;
         }
 
-        // Try to cache headers if not already cached
-        if ($this->header === null) {
-            $this->cacheHeaders();
+        // Return cached header if available
+        if ($this->header !== null) {
+            return $this->header;
         }
 
-        return $this->header ?? false;
+        // Read header from file and restore position
+        $reader = $this->getReader();
+
+        try {
+            // Save current position more carefully
+            $currentPosition = $reader->ftell();
+            $currentKey = $reader->key(); // SplFileObject line number
+
+            // Go to beginning and read header
+            $reader->rewind();
+            $headerRecord = $reader->current();
+
+            if ($headerRecord !== false && is_array($headerRecord) && ! $this->isInvalidRecord($headerRecord)) {
+                $this->header = $headerRecord;
+            }
+
+            // Restore position more accurately
+            if ($currentPosition !== false && $currentKey !== null) {
+                // If we had a valid position, seek back to that line
+                $reader->seek($currentKey);
+            } else {
+                // If no valid position, rewind to start
+                $reader->rewind();
+            }
+
+            return $this->header ?? false;
+
+        } catch (Exception) {
+            return false;
+        }
     }
 
     /**
@@ -383,7 +340,6 @@ class SplCsvReader extends AbstractCsvReader
             return false;
         }
 
-        /** @var SplFileObject $reader */
         $reader = $this->getReader();
 
         // Calculate file line position
@@ -446,9 +402,9 @@ class SplCsvReader extends AbstractCsvReader
     /**
      * Updates the CSV configuration.
      *
-     * @param CsvConfigInterface $config New configuration
+     * @param SplConfig $config New configuration
      */
-    public function setConfig(CsvConfigInterface $config): void
+    public function setConfig(SplConfig $config): void
     {
         $this->config = $config;
 
@@ -462,12 +418,12 @@ class SplCsvReader extends AbstractCsvReader
     /**
      * Gets the current CSV configuration.
      *
-     * @return CsvConfigInterface The configuration object
+     * @return SplConfig The configuration object
      * @throws Exception If configuration is not set
      */
-    public function getConfig(): CsvConfigInterface
+    public function getConfig(): SplConfig
     {
-        if (! $this->config instanceof \CsvToolkit\Contracts\CsvConfigInterface) {
+        if (! $this->config instanceof SplConfig) {
             throw new Exception("Configuration not set");
         }
 

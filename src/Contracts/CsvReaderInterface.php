@@ -2,96 +2,88 @@
 
 namespace CsvToolkit\Contracts;
 
-use FastCSVReader;
-use SplFileObject;
-
 /**
  * Interface for CSV reader implementations.
  *
- * Defines the contract for reading CSV files with support for different
- * underlying implementations (FastCSV extension or SplFileObject).
+ * Defines the core contract for reading CSV files that both
+ * FastCSV extension and SplFileObject implementations can support.
  */
 interface CsvReaderInterface
 {
     /**
-     * Gets the underlying reader object.
+     * Gets the next record from the CSV file.
      *
-     * @return SplFileObject|FastCSVReader|null The reader object
-     */
-    public function getReader(): SplFileObject|FastCSVReader|null;
-
-    /**
-     * Gets the current CSV configuration.
-     *
-     * @return CsvConfigInterface The configuration object
-     */
-    public function getConfig(): CsvConfigInterface;
-
-    /**
-     * Gets the total number of data records in the CSV file.
-     *
-     * @return int|null Number of records (excluding header if present)
-     */
-    public function getRecordCount(): ?int;
-
-    /**
-     * Rewinds the reader to the beginning of the data records.
-     */
-    public function rewind(): void;
-
-    /**
-     * Gets the current 0-based record position.
-     *
-     * @return int Current position (-1 if no record has been read, 0+ for actual positions)
-     */
-    public function getCurrentPosition(): int;
-
-    /**
-     * Gets the record at the current position without advancing.
-     *
-     * @return array|false Array of field values, or false if no record has been read
-     */
-    public function getRecord(): array|false;
-
-    /**
-     * Reads the next record sequentially.
-     *
-     * @return array|false Array of field values, or false if end of file
+     * @return array|false Array of field values, or false if no more records
      */
     public function nextRecord(): array|false;
 
     /**
-     * Gets the header row if headers are enabled.
+     * Gets the current record without advancing the position.
      *
-     * @return array|false Array of header field names, or false if headers disabled
+     * @param int|null $position Optional position to get record from
+     * @return array|false Array of field values, or false if no record
      */
-    public function getHeader(): array|false;
+    public function getRecord(?int $position = null): array|false;
 
     /**
-     * Checks if the CSV file contains any data records.
+     * Seeks to a specific record position.
      *
-     * @return bool True if file contains records, false otherwise
+     * @param int $position Zero-based record position
+     * @return array|false Array of field values, or false if position invalid
+     */
+    public function seek(int $position): array|false;
+
+    /**
+     * Rewinds the reader to the beginning.
+     */
+    public function rewind(): void;
+
+    /**
+     * Gets the current position.
+     *
+     * @return int Current zero-based position
+     */
+    public function getCurrentPosition(): int;
+
+    /**
+     * Checks if there are more records to read.
+     *
+     * @return bool True if more records available
+     */
+    public function hasNext(): bool;
+
+    /**
+     * Checks if the CSV has any records.
+     *
+     * @return bool True if records exist
      */
     public function hasRecords(): bool;
 
     /**
-     * Sets the CSV file path and resets the reader.
+     * Gets the header row if available.
      *
-     * @param string $source Path to the CSV file
+     * @return array|false Array of header names, or false if no header
+     */
+    public function getHeader(): array|false;
+
+    /**
+     * Gets the total number of records.
+     *
+     * @return int|null Total record count, or null if unknown
+     */
+    public function getRecordCount(): ?int;
+
+    /**
+     * Sets the source file path.
+     *
+     * @param string $source Path to CSV file
      */
     public function setSource(string $source): void;
 
     /**
-     * Gets the current CSV file path.
+     * Gets the current source file path.
      *
-     * @return string File path string
+     * @return string File path
      */
     public function getSource(): string;
-
-    /**
-     * Updates the CSV configuration.
-     *
-     * @param CsvConfigInterface $config New configuration
-     */
-    public function setConfig(CsvConfigInterface $config): void;
 }

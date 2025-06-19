@@ -2,32 +2,40 @@
 
 namespace CsvToolkit\Writers;
 
-use CsvToolkit\Configs\CsvConfig;
-use CsvToolkit\Contracts\CsvConfigInterface;
+use CsvToolkit\Configs\SplConfig;
+use CsvToolkit\Contracts\CsvWriterInterface;
 use CsvToolkit\Exceptions\CsvWriterException;
 use CsvToolkit\Exceptions\DirectoryNotFoundException;
 use CsvToolkit\Exceptions\InvalidConfigurationException;
+use CsvToolkit\Helpers\FileValidator;
+use FastCSVWriter;
 use SplFileObject;
 
 /**
  * CSV Writer implementation using SplFileObject
  *
- * This class provides functionality to write CSV files using PHP's built-in SplFileObject.
- * It supports custom delimiters, enclosures, and escape characters.
+ * This class provides CSV writing functionality using PHP's built-in SplFileObject.
+ * It serves as a fallback when the FastCSV extension is not available.
  */
-class SplCsvWriter extends AbstractCsvWriter
+class SplCsvWriter implements CsvWriterInterface
 {
+    protected ?array $header = null;
+
+    protected SplConfig $config;
+
+    protected SplFileObject|FastCSVWriter|null $writer = null;
+
     /**
      * Creates a new SplFileObject-based CSV writer instance.
      *
      * @param string|null $target Optional file path for output
-     * @param CsvConfigInterface|null $config Optional configuration object
+     * @param SplConfig|null $config Optional configuration object
      */
     public function __construct(
         ?string $target = null,
-        ?CsvConfigInterface $config = null
+        ?SplConfig $config = null
     ) {
-        $this->config = $config ?? new CsvConfig();
+        $this->config = $config ?? new SplConfig();
 
         if ($target !== null) {
             $this->setTarget($target);
@@ -37,28 +45,18 @@ class SplCsvWriter extends AbstractCsvWriter
     /**
      * Gets the underlying SplFileObject instance.
      *
-     * @return SplFileObject|null The SplFileObject instance
+     * @return SplFileObject|FastCSVWriter|null The SplFileObject instance
      * @throws InvalidConfigurationException If configuration is invalid
      * @throws CsvWriterException If target path is empty or file cannot be created
      * @throws DirectoryNotFoundException If directory doesn't exist
      */
-    public function getWriter(): ?SplFileObject
+    public function getWriter(): SplFileObject|FastCSVWriter|null
     {
         if (! $this->writer instanceof SplFileObject) {
             $this->validateConfig();
 
-            $targetPath = $this->getTarget();
-
-            if (in_array(trim($targetPath), ['', '0'], true)) {
-                throw new CsvWriterException('Target file path is required');
-            }
-
-            $directory = dirname($targetPath);
-
-            // Check if directory exists
-            if (! is_dir($directory)) {
-                throw new DirectoryNotFoundException($directory);
-            }
+            $targetPath = $this->getDestination();
+            FileValidator::validateFileWritable($targetPath);
 
             try {
                 $this->writer = new SplFileObject($targetPath, 'w');
@@ -68,10 +66,10 @@ class SplCsvWriter extends AbstractCsvWriter
                     $this->getConfig()->getEscape()
                 );
             } catch (\RuntimeException $e) {
-                throw new CsvWriterException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
+                throw new CsvWriterException("Failed to open file for writing: " . $this->getDestination(), 0, $e);
             } catch (\Exception $e) {
                 // Catch any other exceptions and convert to CsvWriterException
-                throw new CsvWriterException("Failed to open file for writing: " . $this->getTarget(), 0, $e);
+                throw new CsvWriterException("Failed to open file for writing: " . $this->getDestination(), 0, $e);
             }
         }
 
@@ -81,14 +79,10 @@ class SplCsvWriter extends AbstractCsvWriter
     /**
      * Gets the current CSV configuration.
      *
-     * @return CsvConfigInterface The configuration object
+     * @return SplConfig The configuration object
      */
-    public function getConfig(): CsvConfigInterface
+    public function getConfig(): SplConfig
     {
-        if (! isset($this->config)) {
-            $this->config = new CsvConfig();
-        }
-
         return $this->config;
     }
 
@@ -216,51 +210,11 @@ class SplCsvWriter extends AbstractCsvWriter
     }
 
     /**
-     * Sets the output file path.
-     *
-     * @param string $target File path for CSV output
-     */
-    public function setTarget(string $target): void
-    {
-        $this->config->setPath($target);
-    }
-
-    /**
-     * Gets the current output file path.
-     *
-     * @return string File path string
-     */
-    public function getTarget(): string
-    {
-        return $this->config->getPath();
-    }
-
-    /**
-     * Gets the source file path.
-     *
-     * @return string File path string
-     */
-    public function getSource(): string
-    {
-        return $this->getTarget();
-    }
-
-    /**
-     * Sets the source file path.
-     *
-     * @param string $source File path to set
-     */
-    public function setSource(string $source): void
-    {
-        $this->setTarget($source);
-    }
-
-    /**
      * Sets the CSV configuration.
      *
-     * @param CsvConfigInterface $config New configuration
+     * @param SplConfig $config New configuration
      */
-    public function setConfig(CsvConfigInterface $config): void
+    public function setConfig(SplConfig $config): void
     {
         $this->config = $config;
         // Reset writer to apply new config
@@ -281,5 +235,108 @@ class SplCsvWriter extends AbstractCsvWriter
             }
             $this->write($record);
         }
+    }
+
+    /**
+     * Sets the CSV headers.
+     *
+     * @param array $headers Array of header strings
+     */
+    public function setHeaders(array $headers): void
+    {
+        $this->header = $headers;
+    }
+
+    /**
+     * Gets the CSV headers.
+     *
+     * @return array|null Array of header strings or null if not set
+     */
+    public function getHeaders(): ?array
+    {
+        return $this->header;
+    }
+
+    /**
+     * Sets the destination file path.
+     *
+     * @param string $destination Path to write CSV file
+     */
+    public function setDestination(string $destination): void
+    {
+        $this->config->setPath($destination);
+    }
+
+    /**
+     * Gets the current destination file path.
+     *
+     * @return string File path
+     */
+    public function getDestination(): string
+    {
+        return $this->config->getPath();
+    }
+
+    /**
+     * Sets the output file path (alias for setDestination).
+     *
+     * @param string $target File path for CSV output
+     */
+    public function setTarget(string $target): void
+    {
+        $this->setDestination($target);
+    }
+
+    /**
+     * Gets the current output file path (alias for getDestination).
+     *
+     * @return string File path string
+     */
+    public function getTarget(): string
+    {
+        return $this->getDestination();
+    }
+
+    /**
+     * Gets the source file path (alias for getDestination).
+     *
+     * @return string File path string
+     */
+    public function getSource(): string
+    {
+        return $this->getDestination();
+    }
+
+    /**
+     * Sets the source file path (alias for setDestination).
+     *
+     * @param string $source File path to set
+     */
+    public function setSource(string $source): void
+    {
+        $this->setDestination($source);
+    }
+
+    /**
+     * Manually flushes buffered data to disk.
+     * This method is useful when auto-flush is disabled for performance reasons.
+     * Call this periodically (e.g., every 1000 records) to ensure data is written.
+     *
+     * @return bool True on success, false on failure
+     */
+    public function flush(): bool
+    {
+        // SplFileObject writes immediately, so flush always succeeds
+        // This method is provided for interface compatibility with CsvWriter
+        return true;
+    }
+
+    /**
+     * Closes the writer and frees resources.
+     */
+    public function close(): void
+    {
+        // SplFileObject automatically closes when it goes out of scope
+        // No explicit close needed for SplFileObject
     }
 }

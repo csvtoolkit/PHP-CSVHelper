@@ -3,7 +3,6 @@
 namespace Tests\Writers;
 
 use CsvToolkit\Configs\CsvConfig;
-use CsvToolkit\Contracts\CsvConfigInterface;
 use CsvToolkit\Exceptions\CsvWriterException;
 use CsvToolkit\Exceptions\DirectoryNotFoundException;
 use CsvToolkit\Writers\CsvWriter;
@@ -68,7 +67,7 @@ class CsvWriterTest extends TestCase
         $writer = new CsvWriter();
 
         $this->assertInstanceOf(CsvWriter::class, $writer);
-        $this->assertInstanceOf(CsvConfigInterface::class, $writer->getConfig());
+        $this->assertInstanceOf(CsvConfig::class, $writer->getConfig());
         $this->assertEquals('', $writer->getSource());
     }
 
@@ -82,7 +81,7 @@ class CsvWriterTest extends TestCase
         $writer = new CsvWriter($this->testFile);
 
         $this->assertEquals($this->testFile, $writer->getSource());
-        $this->assertInstanceOf(CsvConfigInterface::class, $writer->getConfig());
+        $this->assertInstanceOf(CsvConfig::class, $writer->getConfig());
     }
 
     #[Test]
@@ -159,7 +158,7 @@ class CsvWriterTest extends TestCase
 
         // Verify file contents
         $contents = file_get_contents($this->testFile);
-        $this->assertStringContainsString('John Doe,30,john@example.com', $contents);
+        $this->assertStringContainsString('"John Doe",30,john@example.com', $contents);
     }
 
     #[Test]
@@ -184,8 +183,8 @@ class CsvWriterTest extends TestCase
         // Verify file contents
         $contents = file_get_contents($this->testFile);
         $this->assertStringContainsString('Name,Age,Email', $contents);
-        $this->assertStringContainsString('John Doe,30,john@example.com', $contents);
-        $this->assertStringContainsString('Jane Smith,25,jane@example.com', $contents);
+        $this->assertStringContainsString('"John Doe",30,john@example.com', $contents);
+        $this->assertStringContainsString('"Jane Smith",25,jane@example.com', $contents);
     }
 
     #[Test]
@@ -211,9 +210,9 @@ class CsvWriterTest extends TestCase
         $lines = explode("\n", trim($contents));
         $this->assertCount(4, $lines);
         $this->assertStringContainsString('Name,Age,Email', $lines[0]);
-        $this->assertStringContainsString('John Doe,30,john@example.com', $lines[1]);
-        $this->assertStringContainsString('Jane Smith,25,jane@example.com', $lines[2]);
-        $this->assertStringContainsString('Bob Johnson,35,bob@example.com', $lines[3]);
+        $this->assertStringContainsString('"John Doe",30,john@example.com', $lines[1]);
+        $this->assertStringContainsString('"Jane Smith",25,jane@example.com', $lines[2]);
+        $this->assertStringContainsString('"Bob Johnson",35,bob@example.com', $lines[3]);
     }
 
     #[Test]
@@ -402,8 +401,8 @@ class CsvWriterTest extends TestCase
 
         // Verify first and last records
         $this->assertStringContainsString('id,name,email', $lines[0]);
-        $this->assertStringContainsString('1,User 1,user1@example.com', $lines[1]);
-        $this->assertStringContainsString('1000,User 1000,user1000@example.com', $lines[1000]);
+        $this->assertStringContainsString('1,"User 1",user1@example.com', $lines[1]);
+        $this->assertStringContainsString('1000,"User 1000",user1000@example.com', $lines[1000]);
     }
 
     #[Test]

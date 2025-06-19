@@ -4,6 +4,9 @@ parameters:
         - src
     excludePaths:
         - tests/*
+        - stubs/fastcsv.php
+    stubFiles:
+        - stubs/fastcsv.php
     reportUnmatchedIgnoredErrors: true
     treatPhpDocTypesAsCertain: false
     ignoreErrors:
