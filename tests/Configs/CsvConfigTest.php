@@ -3,7 +3,6 @@
 namespace Tests\Configs;
 
 use CsvToolkit\Configs\CsvConfig;
-use CsvToolkit\Contracts\CsvConfigInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -17,7 +16,7 @@ class CsvConfigTest extends TestCase
     {
         $config = new CsvConfig();
 
-        $this->assertInstanceOf(CsvConfigInterface::class, $config);
+        $this->assertInstanceOf(CsvConfig::class, $config);
         $this->assertEquals(',', $config->getDelimiter());
         $this->assertEquals('"', $config->getEnclosure());
         $this->assertEquals('\\', $config->getEscape());

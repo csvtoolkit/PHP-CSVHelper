@@ -3,15 +3,14 @@
 namespace CsvToolkit\Configs;
 
 use CsvToolkit\Enums\Encoding;
-use FastCSVConfig;
 
 /**
- * Configuration class for FastCSV extension.
+ * Configuration class for SplFileObject-based CSV operations.
  *
- * Provides configuration management specifically for the FastCSV extension
- * including all advanced features like encoding, BOM, strict mode, etc.
+ * Provides configuration management for SplFileObject CSV handling
+ * with basic CSV features supported by PHP's built-in functionality.
  */
-class CsvConfig
+class SplConfig
 {
     protected string $delimiter = ',';
 
@@ -25,20 +24,10 @@ class CsvConfig
 
     protected Encoding $encoding = Encoding::UTF8;
 
-    protected bool $writeBOM = false;
-
-    protected bool $strictMode = true;
-
-    protected bool $skipEmptyLines = false;
-
-    protected bool $trimFields = false;
-
-    protected bool $preserveQuotes = false;
-
     protected bool $autoFlush = true;
 
     /**
-     * Creates a new FastCSV configuration instance.
+     * Creates a new SplFileObject configuration instance.
      *
      * @param string|null $path Optional file path to set initially
      * @param bool $hasHeader Whether the CSV file has a header row (default: true)
@@ -122,9 +111,9 @@ class CsvConfig
         return $this;
     }
 
-    public function getEncoding(): int
+    public function getEncoding(): Encoding
     {
-        return $this->encoding->value;
+        return $this->encoding;
     }
 
     public function setEncoding(Encoding|int $encoding): self
@@ -146,70 +135,11 @@ class CsvConfig
         return $this->encoding;
     }
 
-    public function getWriteBOM(): bool
-    {
-        return $this->writeBOM;
-    }
-
-    public function setWriteBOM(bool $writeBOM): self
-    {
-        $this->writeBOM = $writeBOM;
-
-        return $this;
-    }
-
-    public function getStrictMode(): bool
-    {
-        return $this->strictMode;
-    }
-
-    public function setStrictMode(bool $strictMode): self
-    {
-        $this->strictMode = $strictMode;
-
-        return $this;
-    }
-
-    public function getSkipEmptyLines(): bool
-    {
-        return $this->skipEmptyLines;
-    }
-
-    public function setSkipEmptyLines(bool $skipEmptyLines): self
-    {
-        $this->skipEmptyLines = $skipEmptyLines;
-
-        return $this;
-    }
-
-    public function getTrimFields(): bool
-    {
-        return $this->trimFields;
-    }
-
-    public function setTrimFields(bool $trimFields): self
-    {
-        $this->trimFields = $trimFields;
-
-        return $this;
-    }
-
-    public function getPreserveQuotes(): bool
-    {
-        return $this->preserveQuotes;
-    }
-
-    public function setPreserveQuotes(bool $preserveQuotes): self
-    {
-        $this->preserveQuotes = $preserveQuotes;
-
-        return $this;
-    }
-
     /**
-     * Checks if auto-flush is enabled.
+     * Checks if auto-flush is enabled for write operations.
      * Auto-flush causes data to be written to disk immediately after each write operation.
      * When disabled, data is buffered until flush() is called or the writer is closed.
+     * Note: SplFileObject always writes immediately, so this setting has no effect.
      *
      * @return bool True if auto-flush is enabled (default: true)
      */
@@ -219,41 +149,18 @@ class CsvConfig
     }
 
     /**
-     * Sets whether to automatically flush data after each write.
+     * Sets whether to automatically flush data after each write operation.
+     * Note: SplFileObject always writes immediately, so this setting has no effect.
+     * This method is provided for interface compatibility with CsvConfig.
      *
-     * @param bool $autoFlush True to enable auto-flush, false for manual flushing
-     * @return $this
+     * @param bool $autoFlush True to enable auto-flush (immediate writes),
+     *                       false for manual flushing (better performance)
+     * @return $this For method chaining
      */
     public function setAutoFlush(bool $autoFlush): self
     {
         $this->autoFlush = $autoFlush;
 
         return $this;
-    }
-
-    /**
-     * Creates a FastCSVConfig object for the extension.
-     *
-     * @return \FastCSVConfig The native extension config object
-     */
-    public function toFastCsvConfig(): FastCSVConfig
-    {
-        $config = new FastCSVConfig();
-        $config
-            ->setPath($this->path)
-            ->setDelimiter($this->delimiter)
-            ->setEnclosure($this->enclosure)
-            ->setEscape($this->escape)
-            ->setHasHeader($this->hasHeader)
-            ->setOffset($this->offset)
-            ->setEncoding($this->encoding->value)
-            ->setWriteBOM($this->writeBOM)
-            ->setStrictMode($this->strictMode)
-            ->setSkipEmptyLines($this->skipEmptyLines)
-            ->setTrimFields($this->trimFields)
-            ->setPreserveQuotes($this->preserveQuotes)
-            ->setAutoFlush($this->autoFlush);
-
-        return $config;
     }
 }
