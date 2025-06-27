@@ -2,7 +2,6 @@
 
 [![Latest Stable Version](https://poser.pugx.org/csvtoolkit/csv-helper/v/stable)](https://packagist.org/packages/csvtoolkit/csv-helper)
 [![Total Downloads](https://poser.pugx.org/csvtoolkit/csv-helper/downloads)](https://packagist.org/packages/csvtoolkit/csv-helper)
-[![Latest Unstable Version](https://poser.pugx.org/csvtoolkit/csv-helper/v/unstable)](https://packagist.org/packages/csvtoolkit/csv-helper)
 [![License](https://poser.pugx.org/csvtoolkit/csv-helper/license)](https://packagist.org/packages/csvtoolkit/csv-helper)
 [![PHP Version Require](https://poser.pugx.org/csvtoolkit/csv-helper/require/php)](https://packagist.org/packages/csvtoolkit/csv-helper)
 
@@ -194,22 +193,39 @@ try {
 
 ## Performance
 
-When the FastCSV extension is available, CsvToolkit provides significant performance improvements:
+When the FastCSV extension is available, CsvToolkit provides significant performance improvements over PHP's native SplFileObject:
 
-**Validated Benchmarks (comprehensive testing):**
-- **4-7x faster** than SplFileObject implementation
-- **Read Performance**: Up to 383K records/sec vs 82K records/sec (SplFileObject)
-- **Write Performance**: Up to 692K records/sec vs 109K records/sec (SplFileObject)
-- **Memory Efficient**: Constant memory usage with streaming for datasets of any size
-- **Time per Record**: 1.4-3.7μs (FastCSV) vs 9.1-18.7μs (SplFileObject)
+### 🚀 Benchmark Results (PHP 8.4.8, 1GB memory limit)
 
-**Real-world Performance Impact:**
-- **Lower development costs**: Reduce your team's time spent on CSV processing optimization
-- **Reduce infrastructure costs**: More efficient processing means lower server resources needed
+**Read Operations:**
+- **Small datasets (1K rows)**: **4.1x faster** - 272K vs 67K records/sec
+- **Medium datasets (100K rows)**: **3.6x faster** - 568K vs 156K records/sec  
+- **Large datasets (1M rows)**: **4.8x faster** - 503K vs 106K records/sec
 
-**Benchmarking Suite**: Comprehensive performance validation available at [benchmarking-php-fastcsv](https://github.com/csvtoolkit/benchmarking-php-fastcsv)
+**Combined Read/Write Operations:**
+- **Small datasets**: **1.6x faster** - 88K vs 56K records/sec
+- **Medium datasets**: **2.5x faster** - 339K vs 136K records/sec
+- **Large datasets**: **2.9x faster** - 282K vs 98K records/sec
+
+### 💾 Memory Efficiency
+- **Constant memory usage**: ~2MB regardless of file size
+- **Streaming operations**: No memory accumulation with large files
+- **Real memory usage**: Minimal (0 bytes) due to efficient streaming
+
+### 📊 Performance Characteristics
+- **FastCSV**: Optimized C extension with direct memory access
+- **SplFileObject**: Pure PHP implementation with additional overhead
+- **Scaling**: Performance advantage increases with data size
+- **Consistency**: FastCSV shows lower standard deviation for predictable performance
+
+### 🎯 Real-world Impact
+- **Lower development costs**: Reduce time spent on CSV processing optimization
+- **Reduce infrastructure costs**: More efficient processing means lower server resources
+- **Better scalability**: Handle larger datasets without performance degradation
 
 The library automatically selects the best available implementation without any code changes required.
+
+**Benchmark Details**: Comprehensive performance validation available at [benchmarking-php-fastcsv](https://github.com/csvtoolkit/benchmarking-php-fastcsv)
 
 ## Testing
 
@@ -242,18 +258,10 @@ We welcome contributions! Please follow these guidelines:
 - Comprehensive exception handling
 - Full type safety and documentation
 
-### Future Features 🚧
-- **In Progress**: Enhanced FastCSV extension features
-- **Planned**:
-  - Data mappers and transformers
-  - Built-in validators
-  - QCSV (query CSV) support
-  - Streaming support for very large files
-  - CSV schema validation
 
 ## Requirements
 
-- PHP 8.1 or higher
+- PHP 8.3 or higher
 - Optional: FastCSV extension for enhanced performance
 
 ## Support the Project
