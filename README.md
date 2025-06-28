@@ -16,7 +16,6 @@ A modern, high-performance CSV processing library for PHP that automatically sel
 - **High Performance**: FastCSV extension provides significant performance improvements
 - **Flexible Configuration**: Support for custom delimiters, enclosures, escape characters, and headers
 - **Factory Pattern**: Simple factory methods for creating readers and writers
-- **Action Classes**: Convenient action classes for quick CSV operations
 - **Comprehensive Testing**: Full test suite with 146+ tests covering both implementations
 - **Type Safety**: Full type declarations and PHPDoc documentation
 
@@ -42,10 +41,11 @@ For enhanced performance, install the FastCSV PHP extension:
 ### Using Factory (Recommended)
 
 ```php
-use CsvToolkit\Factories\CsvFactory;
+use CsvToolkit\Factories\ReaderFactory;
+use CsvToolkit\Factories\WriterFactory;
 
 // Create reader (automatically selects best implementation)
-$reader = CsvFactory::createReader('data.csv');
+$reader = ReaderFactory::create('data.csv');
 
 // Read all records
 while (($record = $reader->nextRecord()) !== false) {
@@ -53,22 +53,9 @@ while (($record = $reader->nextRecord()) !== false) {
 }
 
 // Create writer
-$writer = CsvFactory::createWriter('output.csv');
+$writer = WriterFactory::create('output.csv');
 $writer->write(['Name', 'Age', 'Email']); // Header
 $writer->write(['John Doe', '30', 'john@example.com']);
-```
-
-### Using Action Classes
-
-```php
-use CsvToolkit\Actions\CsvReaderAction;
-use CsvToolkit\Actions\CsvWriterAction;
-
-// Quick reader creation
-$reader = CsvReaderAction::create('data.csv');
-
-// Quick writer creation  
-$writer = CsvWriterAction::create('output.csv');
 ```
 
 ### Manual Implementation Selection
@@ -105,9 +92,9 @@ $config->setDelimiter(',')           // Field delimiter
 ## Reading CSV Files
 
 ```php
-use CsvToolkit\Factories\CsvFactory;
+use CsvToolkit\Factories\ReaderFactory;
 
-$reader = CsvFactory::createReader('data.csv');
+$reader = ReaderFactory::create('data.csv');
 
 // Get header (if configured)
 $header = $reader->getHeader();
@@ -132,9 +119,9 @@ $totalRecords = $reader->getRecordCount();
 ## Writing CSV Files
 
 ```php
-use CsvToolkit\Factories\CsvFactory;
+use CsvToolkit\Factories\WriterFactory;
 
-$writer = CsvFactory::createWriter('output.csv');
+$writer = WriterFactory::create('output.csv');
 
 // Write single record
 $writer->write(['John Doe', '30', 'john@example.com']);
@@ -151,24 +138,30 @@ $writer->writeAll($records);
 ## Implementation Detection
 
 ```php
-use CsvToolkit\Factories\CsvFactory;
+use CsvToolkit\Helpers\ExtensionHelper;
 
 // Check if FastCSV is available
-if (CsvFactory::isFastCsvAvailable()) {
+if (ExtensionHelper::isFastCsvLoaded()) {
     echo "Using high-performance FastCSV extension";
 } else {
     echo "Using SplFileObject fallback";
 }
 
 // Get detailed implementation info
-$info = CsvFactory::getImplementationInfo();
+$info = ExtensionHelper::getFastCsvInfo();
 print_r($info);
 // Array
 // (
-//     [implementation] => FastCSV
-//     [extension_loaded] => 1
+//     [loaded] => true
 //     [version] => 0.0.1
+//     [available_classes] => Array
+//         (
+//             [0] => FastCSVConfig
+//             [1] => FastCSVReader
+//             [2] => FastCSVWriter
+//         )
 // )
+?>
 ```
 
 ## Exception Handling
@@ -183,7 +176,7 @@ use CsvToolkit\Exceptions\CsvWriterException;
 use CsvToolkit\Exceptions\EmptyFileException;
 
 try {
-    $reader = CsvFactory::createReader('nonexistent.csv');
+    $reader = ReaderFactory::create('nonexistent.csv');
 } catch (FileNotFoundException $e) {
     echo "File not found: " . $e->getMessage();
 } catch (CsvReaderException $e) {
@@ -254,10 +247,8 @@ We welcome contributions! Please follow these guidelines:
 ### Current Features ✅
 - FastCSV extension integration with automatic fallback
 - Factory pattern for implementation selection
-- Action classes for convenient usage
 - Comprehensive exception handling
 - Full type safety and documentation
-
 
 ## Requirements
 
